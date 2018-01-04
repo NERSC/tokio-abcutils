@@ -1,0 +1,3 @@
+[submodule "pytokio"]
+	path = pytokio
+	url = git@github.com:NERSC/pytokio.git
