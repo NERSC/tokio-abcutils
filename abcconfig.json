@@ -1,0 +1,13 @@
+{
+    "job_ppns": {
+        "edison": 16,
+        "cori": 16
+    },
+    "app_api": {
+        "ior": "posix",
+        "dbscan_read": "mpiio",
+        "vpicio_uni": "mpiio",
+        "hacc_io_read": "posix",
+        "hacc_io_write": "posix"
+    }
+}
