@@ -51,3 +51,15 @@ factors.  That occurs in analysis that we will perform later on.
 
 We then convert the collection of per-job summary json files into a normalized
 collection of records in CSV format.
+
+    $ ./normalize_job_summaries.py --output summaries/edison-summaries_%s.csv ./summaries/edison/*.json
+
+The `normalize_job_summaries.py` script takes any number of json files generated
+by `summarize_job.py`, finds all of the fields that were populated, and creates
+a Pandas DataFrame from all of those records.  Each record that is missing one
+or more keys from `summarize_job.py` simply has that field left as a NaN.
+
+The `--output` argument allows you to specify a file name to which the
+normalized data should be written in CSV format.  If the `--output` file name
+contains a `%s`, this is replaced by the date range represented in the
+normalized data.
