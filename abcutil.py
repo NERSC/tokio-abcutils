@@ -65,6 +65,41 @@ def load_and_synthesize_csv(csv_file, system="edison"):
 
     return dataframe
 
+def normalize_column(dataframe, target_col, group_by_cols, new_col_base):
+    """
+    Given a dataframe, the name of a column containing raw performance
+    measurements, and a list of column names in which performance should be
+    normalized, create a new colum named by new_col_base with normalized
+    performance.  Modifies the dataframe in-place and does not return
+    anything.
+    """
+
+    norm_group = dataframe.groupby(group_by_cols)
+    norm_denoms = {
+        'mean': norm_group[target_col].mean(),
+        'median': norm_group[target_col].median(),
+        'max': norm_group[target_col].max(),
+    }
+    new_cols = {}
+
+    for function, denoms in norm_denoms.iteritems():
+        new_col_key = '%s_by_%s' % (new_col_base, function)
+        new_cols[new_col_key] = []
+        for _, row in dataframe.iterrows():
+            # must descend down each rank of the grouping to get the correct
+            # normalization constant
+            denom = None
+            for key in group_by_cols:
+                if denom is None:
+                    denom = denoms[row[key]]
+                else:
+                    denom = denom[row[key]]
+            new_cols[new_col_key].append(row[target_col] / denom)
+
+    ### Take our normalized data and add them as new columns
+    for new_col, new_col_data in new_cols.iteritems():
+        dataframe[new_col] = new_col_data
+
 def apply_filters(dataframe, filter_list, verbose=False):
     """
     Applies a list of filters to a dataframe and returns the resulting view
