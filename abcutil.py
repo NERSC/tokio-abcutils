@@ -26,17 +26,18 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     dataframe['darshan_write_job?'] = [1 if x else 0 for x in dataframe['darshan_biggest_write_api_bytes'] > dataframe['darshan_biggest_read_api_bytes']]
     dataframe['darshan_read_or_write_job'] = ['write' if x == 1 else 'read' for x in dataframe['darshan_write_job?']]
 
-    # Determine if file per process or shared-file was used predominantly via
-    # some heuristics.  A job is file per process if
-    #  1. the number of files >= number of processes
-    #  2. 
-    # number of procs (to within 5%), it is file per process
+    # Determine if file per process or shared-file was used predominantly.
+    # If the number of files opened divides evenly by the number of processes,
+    # it is file per process; otherwise, we call it shared-file.
+    # "divides evenly" is defined as "evenly to within a 5% tolerance" to
+    # account for one-off single-shared files like input decks, config files,
+    # etc
     remainder_write = dataframe['darshan_biggest_write_api_files'] % dataframe['darshan_nprocs']
     remainder_read = dataframe['darshan_biggest_read_api_files'] % dataframe['darshan_nprocs']
     fpp_write = remainder_write / dataframe['darshan_biggest_write_api_files']
     fpp_read = remainder_read / dataframe['darshan_biggest_read_api_files']
-    dataframe['darshan_fpp_write_job?'] = [1 if x else 0 for x in fpp_write]
-    dataframe['darshan_fpp_read_job?'] = [1 if x else 0 for x in fpp_read]
+    dataframe['darshan_fpp_write_job?'] = [1 if abs(x) < 0.05 else 0 for x in fpp_write]
+    dataframe['darshan_fpp_read_job?'] = [1 if abs(x) < 0.05 else 0 for x in fpp_read]
 
     # Simplify the darshan_app counter
     dataframe['darshan_app'] = [os.path.basename(x) for x in dataframe['darshan_app']]
