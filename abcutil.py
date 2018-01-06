@@ -7,7 +7,10 @@ import os
 import json
 import pandas
 
+# Load system-wide constants
 CONFIG = {}
+with open('abcconfig.json', 'r') as config_file:
+    CONFIG = json.load(config_file)
 
 def load_and_synthesize_csv(csv_file, system="edison"):
     """
@@ -61,5 +64,22 @@ def load_and_synthesize_csv(csv_file, system="edison"):
 
     return dataframe
 
-with open('abcconfig.json', 'r') as config_file:
-    CONFIG = json.load(config_file)
+def apply_filters(dataframe, filter_list, verbose=False):
+    """
+    Applies a list of filters to a dataframe and returns the resulting view
+    """
+    num_rows = len(dataframe)
+    if verbose:
+        print "Start with %d rows before filtering" % num_rows
+    net_filter = [True] * len(dataframe.index)
+    for idx, condition in enumerate(filter_list):
+        count = len([x for x in net_filter if x])
+        net_filter &= condition
+        num_drops = (count - len([x for x in net_filter if x]))
+        if verbose:
+            print "Dropped %d rows after filter #%d (%d left)" % (num_drops, idx, count - num_drops)
+
+    if verbose:
+        print "%d rows remaining" % len(dataframe[net_filter].index)
+
+    return dataframe[net_filter]
