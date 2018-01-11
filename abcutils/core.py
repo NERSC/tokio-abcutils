@@ -5,6 +5,7 @@ A set of utility functions to assist in working with TOKIO-ABC results
 import os
 import json
 import pandas
+import numpy
 import abcutils
 
 def load_and_synthesize_csv(csv_file, system="edison"):
@@ -38,10 +39,13 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     dataframe['darshan_app'] = [os.path.basename(x) for x in dataframe['darshan_app']]
 
     # Calculate coverage factors
-    dataframe['coverage_factor_read_bw'] = dataframe['darshan_biggest_read_fs_bytes'] / dataframe['fs_tot_bytes_read']
-    dataframe['coverage_factor_write_bw'] = dataframe['darshan_biggest_write_fs_bytes'] / dataframe['fs_tot_bytes_written']
+    dataframe['coverage_factor_read_bw'] = (dataframe['darshan_biggest_read_fs_bytes'] / dataframe['fs_tot_bytes_read']).replace([numpy.inf, -numpy.inf], numpy.nan)
+    dataframe['coverage_factor_write_bw'] = (dataframe['darshan_biggest_write_fs_bytes'] / dataframe['fs_tot_bytes_written']).replace([numpy.inf, -numpy.inf], numpy.nan)
     job_nodehrs = (dataframe['darshan_nprocs'] / abcutils.CONFIG['job_ppns'][system]) * dataframe['darshan_walltime'] / 3600
-    dataframe['coverage_factor_nodehrs'] = job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']
+    dataframe['coverage_factor_nodehrs'] = (job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']).replace([numpy.inf, -numpy.inf], numpy.nan)
+
+    # We can get into trouble with infinite coverage factors--filter them out
+    
 
     # Calculate the relevant metrics for counters that have both a read and
     # writen component; mostly for convenience.
