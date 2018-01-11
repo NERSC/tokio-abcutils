@@ -42,6 +42,12 @@ class TestAbcDataFrame(object):
         assert ((self.dataframe['darshan_read_or_write_job'] == 'read') \
                 | (self.dataframe['darshan_read_or_write_job'] == 'write')).all()
 
+        # Also test the coverage_factor_nodehrs which depends on the configuration json
+        print "Asserting that nodehrs coverage factor > 0"
+        assert (self.dataframe['coverage_factor_nodehrs'] > 0.0).all()
+        print "Asserting that nodehrs coverage factor < 10"
+        assert (self.dataframe['coverage_factor_nodehrs'] < 1.0).all()
+
     def test_normalized_perf(self):
         """
         test abcutils.normalize_column
