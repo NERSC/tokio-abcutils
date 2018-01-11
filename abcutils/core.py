@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 A set of utility functions to assist in working with TOKIO-ABC results
 """

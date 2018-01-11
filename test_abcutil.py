@@ -3,7 +3,7 @@
 Basic tests and demonstrations of functionality for abcutil module
 """
 
-import abcutil
+import abcutils
 
 SAMPLE_INPUT = 'sample_summaries.csv'
 
@@ -15,11 +15,11 @@ class TestAbcDataFrame(object):
         """
         Always need to operate on a dataframe
         """
-        self.dataframe = abcutil.load_and_synthesize_csv(SAMPLE_INPUT)
+        self.dataframe = abcutils.load_and_synthesize_csv(SAMPLE_INPUT)
 
     def test_load_and_synthesize(self):
         """
-        test abcutil.load_and_syntesize_csv functionality
+        test abcutils.load_and_syntesize_csv functionality
         """
         for expected_col in ['_system',
                              'darshan_write_job?',
@@ -44,7 +44,7 @@ class TestAbcDataFrame(object):
 
     def test_normalized_perf(self):
         """
-        test abcutil.normalize_column
+        test abcutils.normalize_column
         """
         target_col = 'darshan_agg_perf_by_slowest_posix'
         group_by_cols = ['darshan_app',
@@ -54,7 +54,7 @@ class TestAbcDataFrame(object):
         new_col_base = 'darshan_normalized_perf'
 
         # modifies the dataframe in-place; returns nothing
-        abcutil.normalize_column(
+        abcutils.normalize_column(
             dataframe=self.dataframe,
             target_col=target_col,
             group_by_cols=group_by_cols,
@@ -65,15 +65,15 @@ class TestAbcDataFrame(object):
 
     def test_filters(self):
         """
-        test abcutil.apply_filters
+        test abcutils.apply_filters
         """
         filters = [
             # only want IOR jobs
             self.dataframe['darshan_app'] == 'ior',
             # only want jobs that did more than 1 TiB of I/O
-            self.dataframe['darshan_biggest_api_bytes'] > 2.0**40,
+            self.dataframe['darshan_biggest_api_bytes'] > 2**40,
         ]
 
-        filtered_df = abcutil.apply_filters(self.dataframe, filters, verbose=True)
+        filtered_df = abcutils.apply_filters(self.dataframe, filters, verbose=True)
         assert len(filtered_df) < len(self.dataframe)
         assert len(filtered_df) > 0
