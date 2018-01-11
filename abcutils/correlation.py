@@ -25,6 +25,8 @@ def calc_correlations(dataframe, correlate_with, analysis_func=scipy.stats.pears
     for column in dataframe.columns:
         if column == correlate_with or column in ignore_cols:
             continue
+        if dataframe[column].nunique() < 2: # cannot correlate if all signals are identical
+            continue
         try:
             # The Scipy stats package barfs if x or y contain any
             # NANs, but we don't want to drop all records that
