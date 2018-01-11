@@ -5,8 +5,8 @@ Routines for calculating correlation metrics from TOKIO-ABC data
 import pandas
 import scipy.stats
 
-def calc_correlations(dataframe, correlate_with, analysis_func=scipy.stats.pearsonr,
-                      ignore_cols=None):
+def calc_correlation_vector(dataframe, correlate_with, analysis_func=scipy.stats.pearsonr,
+                            ignore_cols=None):
     """
     Calculate correlation coefficients and their associated p-values for various
     counter pairs.

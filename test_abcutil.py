@@ -3,9 +3,15 @@
 Basic tests and demonstrations of functionality for abcutil module
 """
 
+import pandas
+import matplotlib
 import abcutils
 
 SAMPLE_INPUT = 'sample_summaries.csv'
+SAMPLE_CORRELATE_WITH = 'darshan_agg_perf_by_slowest_posix'
+
+# prevent the test from throwing DISPLAY errors
+matplotlib.pyplot.switch_backend('agg')
 
 class TestAbcDataFrame(object):
     """
@@ -83,3 +89,58 @@ class TestAbcDataFrame(object):
         filtered_df = abcutils.apply_filters(self.dataframe, filters, verbose=True)
         assert len(filtered_df) < len(self.dataframe)
         assert len(filtered_df) > 0
+
+    def test_plot_correlation_matrix(self):
+        """
+        test abcutils.plot.correlation_matrix
+        """
+        fig, correlations = abcutils.plot.correlation_matrix(self.dataframe)
+        assert fig is not None
+        assert correlations is not None
+        num_correlations = len(fig.axes[0].get_xticklabels())
+        assert num_correlations > 1
+        assert num_correlations <= len(self.dataframe.columns) # non-numeric columns aren't included
+
+    def test_correlation_calc_correlation_vector(self):
+        """
+        test abcutils.correlation.calc_correlation_vector
+        """
+        input_dataframe = pandas.DataFrame.from_dict({
+            'time': [ 1, 2, 3, 4 ],
+            'perf': [ 5.0, 3.0, 2.5, 2.75 ],
+            'var1': [ 7, 12, 3, 6 ],
+            'var2': [ 3, 8, 2, 9 ],
+            'str1': [ 'hello', 'world', 'abc', 'def' ]
+        })
+        vector = abcutils.correlation.calc_correlation_vector(input_dataframe, 'perf')
+        print vector
+
+        print "len(vector) (%d) == len(input_dataframe.columns) - 2 (%d)" % (len(vector), len(input_dataframe.columns))
+        assert len(vector) == len(input_dataframe.columns) - 2
+
+    def test_plot_correlation_vector_table(self):
+        """
+        test abcutils.plot.correlation_vector_table
+        """
+        vector = abcutils.correlation.calc_correlation_vector(self.dataframe, SAMPLE_CORRELATE_WITH)
+        fig = abcutils.plot.correlation_vector_table(vector)
+        assert fig is not None
+        cells_dict = fig.axes[0].tables[0].get_celld()
+
+
+        row_labels = []
+        for cell_pos, cell_obj in fig.axes[0].tables[0].get_celld().iteritems():
+            if cell_pos[1] == -1:
+                row_labels.append(cell_obj.get_text().get_text())
+
+        for row_label in row_labels:
+            print "%s in vector.index?" % row_label
+            assert row_label in vector.index
+
+        for row_label in vector.index:
+            print "%s in row_labels?" % row_label
+            assert row_label in row_labels
+
+        # -1 because of the column heading cell
+        print (len(cells_dict) - 1) / 2, len(vector), len(vector.index)
+        assert (len(cells_dict) - 1) / 2 == len(vector)
