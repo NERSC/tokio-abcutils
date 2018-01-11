@@ -43,8 +43,8 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     dataframe['darshan_app'] = [os.path.basename(x) for x in dataframe['darshan_app']]
 
     # Calculate coverage factors
-    dataframe['coverage_factor_read_bw'] = dataframe['darshan_biggest_read_fs_bytes'] / dataframe['lmt_tot_bytes_read']
-    dataframe['coverage_factor_write_bw'] = dataframe['darshan_biggest_write_fs_bytes'] / dataframe['lmt_tot_bytes_written']
+    dataframe['coverage_factor_read_bw'] = dataframe['darshan_biggest_read_fs_bytes'] / dataframe['fs_tot_bytes_read']
+    dataframe['coverage_factor_write_bw'] = dataframe['darshan_biggest_write_fs_bytes'] / dataframe['fs_tot_bytes_written']
     job_nodehrs = (dataframe['darshan_nprocs'] / CONFIG['job_ppns'][system]) * dataframe['darshan_walltime'] / 3600
     dataframe['coverage_factor_nodehrs'] = job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']
 
