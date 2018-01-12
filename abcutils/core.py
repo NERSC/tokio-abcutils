@@ -4,6 +4,8 @@ A set of utility functions to assist in working with TOKIO-ABC results
 
 import os
 import json
+import gzip
+import mimetypes
 import pandas
 import numpy
 import abcutils
@@ -14,8 +16,14 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     analysis.
     """
 
-    ### For Edison
+    _, encoding = mimetypes.guess_type(csv_file)
+    if encoding == 'gzip':
+        fp = gzip.open(csv_file, 'r')
+    else:
+        fp = open(csv_file, 'r')
     dataframe = pandas.read_csv(csv_file).dropna()
+    fp.close()
+
     dataframe['_system'] = system
 
     # Did job do mostly reads or mostly writes?

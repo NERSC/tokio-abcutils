@@ -5,29 +5,39 @@ import pandas
 import matplotlib
 import matplotlib.pyplot
 
-def correlation_matrix(dataframe, labelsize=20, figsize=(20, 20), cmap='seismic'):
+def _init_ax(ax):
+    """
+    Ensure that a fig, ax exists if not specified
+    """
+    if ax is None:
+        fig = matplotlib.pyplot.figure()
+        ax = fig.add_subplot(111)
+
+    return ax
+ 
+def correlation_matrix(dataframe, ax=None, fontsize=20, cmap='seismic', **kwargs):
     """
     Plot graphical correlation matrix for each pair of columns in the dataframe.
     
     Input:
         dataframe: pandas DataFrame
-        figsize: vertical and horizontal size of the plot
-        labelsize: size of text labels
+        fontsize: size of text labels
         cmap: string name of a matplotlib color map
     """
     correlations = dataframe.corr()
-    fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
+    ax = _init_ax(ax)
     ax.matshow(correlations,
                cmap=matplotlib.pyplot.get_cmap(cmap),
-               norm=matplotlib.colors.Normalize(vmin=-1.0, vmax=1.0))
+               norm=matplotlib.colors.Normalize(vmin=-1.0, vmax=1.0),
+               **kwargs)
 
     ax.set_xticks(range(len(correlations.columns)))
     ax.set_yticks(range(len(correlations.columns)))
-    ax.set_xticklabels(correlations.columns, rotation='vertical', fontsize=labelsize)
-    ax.set_yticklabels(correlations.columns, fontsize=labelsize)
-    return fig, correlations
+    ax.set_xticklabels(correlations.columns, rotation='vertical', fontsize=fontsize)
+    ax.set_yticklabels(correlations.columns, fontsize=fontsize)
+    return ax, correlations
 
-def correlation_vector_table(dataframe, labelsize=14, figsize=None, col_name_map=None, row_name_map=None):
+def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None, row_name_map=None, **kwargs):
     """
     Generate a table from a dataframe which contains columns containing
     'coefficient' and 'p-value' in their headers.  Intended to be used with the
@@ -42,10 +52,10 @@ def correlation_vector_table(dataframe, labelsize=14, figsize=None, col_name_map
     if row_name_map is None:
         row_name_map = {}
 
-    if figsize is None:
-        figsize = (4, 0.4 * len(dataframe))
+#   if figsize is None:
+#       figsize = (4, 0.4 * len(dataframe))
 
-    fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
+    ax = _init_ax(ax)
 
     # identify columns that contain correlation coefficients
     coefficient_keys = [x for x in dataframe.columns if 'coefficient' in x]
@@ -55,8 +65,9 @@ def correlation_vector_table(dataframe, labelsize=14, figsize=None, col_name_map
                                 dataframe[coefficient_keys],#.reindex(print_order),
                                 loc='upper right',
                                 colWidths=[0.8, 0.8, 3.8],
-                                bbox=[0, 0, 1, 1])
-    table.set_fontsize(labelsize)
+                                bbox=[0, 0, 1, 1],
+                                **kwargs)
+    table.set_fontsize(fontsize)
     ax.axis('tight')
     ax.axis('off')
 
@@ -113,4 +124,4 @@ def correlation_vector_table(dataframe, labelsize=14, figsize=None, col_name_map
     for cell_pos, new_value in remap_values.iteritems():
         cells_dict[cell_pos].get_text().set_text(new_value)
 
-    return fig
+    return ax

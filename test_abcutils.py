@@ -7,7 +7,7 @@ import pandas
 import matplotlib
 import abcutils
 
-SAMPLE_INPUT = 'sample_summaries.csv'
+SAMPLE_INPUT = 'sample_summaries.csv.gz'
 SAMPLE_CORRELATE_WITH = 'darshan_agg_perf_by_slowest_posix'
 
 # prevent the test from throwing DISPLAY errors
@@ -94,10 +94,10 @@ class TestAbcDataFrame(object):
         """
         test abcutils.plot.correlation_matrix
         """
-        fig, correlations = abcutils.plot.correlation_matrix(self.dataframe)
-        assert fig is not None
+        ax, correlations = abcutils.plot.correlation_matrix(self.dataframe)
+        assert ax is not None
         assert correlations is not None
-        num_correlations = len(fig.axes[0].get_xticklabels())
+        num_correlations = len(ax.get_xticklabels())
         assert num_correlations > 1
         assert num_correlations <= len(self.dataframe.columns) # non-numeric columns aren't included
 
@@ -123,13 +123,13 @@ class TestAbcDataFrame(object):
         test abcutils.plot.correlation_vector_table
         """
         vector = abcutils.correlation.calc_correlation_vector(self.dataframe, SAMPLE_CORRELATE_WITH)
-        fig = abcutils.plot.correlation_vector_table(vector)
-        assert fig is not None
-        cells_dict = fig.axes[0].tables[0].get_celld()
+        ax = abcutils.plot.correlation_vector_table(vector)
+        assert ax is not None
+        cells_dict = ax.tables[0].get_celld()
 
 
         row_labels = []
-        for cell_pos, cell_obj in fig.axes[0].tables[0].get_celld().iteritems():
+        for cell_pos, cell_obj in ax.tables[0].get_celld().iteritems():
             if cell_pos[1] == -1:
                 row_labels.append(cell_obj.get_text().get_text())
 
