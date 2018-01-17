@@ -2,8 +2,21 @@
 Useful plotting routines for examining TOKIO-ABC data
 """
 import pandas
+import numpy
 import matplotlib
 import matplotlib.pyplot
+import abcutils
+
+DEFAULT_BOXPLOT_GROUP_BY = ['darshan_fpp_or_ssf_job', 'darshan_read_or_write_job', 'darshan_app']
+DEFAULT_BOXPLOT_SETTINGS = {
+    'boxprops': {'linewidth': 2},
+    'medianprops': {'linewidth': 4},
+    'whiskerprops': {'linewidth': 2},
+    'capprops': {'linewidth': 2},
+    'widths': 0.75,
+    'whis': [5, 95],
+    'showfliers': False,
+}
 
 def _init_ax(ax):
     """
@@ -14,11 +27,11 @@ def _init_ax(ax):
         ax = fig.add_subplot(111)
 
     return ax
- 
+
 def correlation_matrix(dataframe, ax=None, fontsize=20, cmap='seismic', **kwargs):
     """
     Plot graphical correlation matrix for each pair of columns in the dataframe.
-    
+
     Input:
         dataframe: pandas DataFrame
         fontsize: size of text labels
@@ -52,9 +65,6 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
     if row_name_map is None:
         row_name_map = {}
 
-#   if figsize is None:
-#       figsize = (4, 0.4 * len(dataframe))
-
     ax = _init_ax(ax)
 
     # identify columns that contain correlation coefficients
@@ -62,11 +72,11 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
 
     ### the index is column -1
     table = pandas.plotting.table(ax,
-                                dataframe[coefficient_keys],#.reindex(print_order),
-                                loc='upper right',
-                                colWidths=[0.8, 0.8, 3.8],
-                                bbox=[0, 0, 1, 1],
-                                **kwargs)
+                                  dataframe[coefficient_keys],#.reindex(print_order),
+                                  loc='upper right',
+                                  colWidths=[0.8, 0.8, 3.8],
+                                  bbox=[0, 0, 1, 1],
+                                  **kwargs)
     table.set_fontsize(fontsize)
     ax.axis('tight')
     ax.axis('off')
@@ -85,10 +95,10 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
             remap_values[cell_pos] = row_name_map.get(value, value)
             cell_obj._loc = 'right'
         else:         # coefficient cell
-            index = cells_dict[(i,-1)].get_text().get_text()
-            column = cells_dict[(0,j)].get_text().get_text()
+            index = cells_dict[(i, -1)].get_text().get_text()
+            column = cells_dict[(0, j)].get_text().get_text()
             cell_obj._loc = 'center'
-            
+
             if value == "nan":
                 cell_obj.set_color('grey')
                 remap_values[cell_pos] = ""
@@ -111,7 +121,7 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
                     set_color = 'green'
                 else:
                     set_color = 'red'
-                
+
                 ### for debugging, since the resulting figure doesn't contain any p-values
                 # print "%30s pval=%10.4f; setting color to %s" % (index, pval, set_color)
                 cell_obj.set_color(set_color)
@@ -123,5 +133,73 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
     ### Actually rewrite the cells now
     for cell_pos, new_value in remap_values.iteritems():
         cells_dict[cell_pos].get_text().set_text(new_value)
+
+    return ax
+
+def default_rename_boxplot_label(current_label):
+    """
+    Convert a default boxplot axis label into a human-comprehensible one
+    """
+    # current_label = "(fpp, write, hacc_io_write)"
+    try:
+        fpp_or_shared, read_or_write, app = current_label.split(',')
+    except ValueError:
+        return current_label
+    fpp_or_shared = fpp_or_shared[1:]
+    read_or_write = read_or_write.strip()
+    app = app[:-1].strip()
+
+    if "ior" in app:
+        if "shared" in fpp_or_shared:
+            new_label = "IOR/shared"
+        else:
+            new_label = "IOR/fpp"
+    else:
+        new_label = abcutils.CONFIG['app_name_map'].get(app, app)
+
+    if 'write' in read_or_write:
+        new_label += "(W)"
+    else:
+        new_label += "(R)"
+
+    return new_label
+
+def grouped_boxplot(dataframe,
+                    plot_variable,
+                    group_by=DEFAULT_BOXPLOT_GROUP_BY,
+                    rename_label_func=default_rename_boxplot_label,
+                    ax=None,
+                    **kwargs):
+    """
+    Create a boxplot to show the distribution of one column that is grouped by a
+    list of other columns.
+    """
+    other_settings = DEFAULT_BOXPLOT_SETTINGS.copy()
+    other_settings.update(kwargs)
+
+    if ax is None:
+        _, ax = matplotlib.pyplot.subplots()
+
+    dataframe.boxplot(column=[plot_variable],
+                      by=group_by,
+                      ax=ax,
+                      **(other_settings))
+
+    ax.set_title("")
+    ax.get_figure().suptitle("")
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.xaxis.grid(True)
+
+    # relabel the x axis labels
+    new_labels = []
+    for axis_label in ax.get_xticklabels():
+        axis_label.set_rotation(90)
+        new_labels.append(rename_label_func(axis_label.get_text()))
+    ax.set_xticklabels(new_labels)
+
+    # subsequent analyses are free to override these ticks
+    ax.yaxis.set_ticks(numpy.linspace(0.0, 1.0, 6))
+    ax.set_ylim([-0.1, 1.1])
 
     return ax

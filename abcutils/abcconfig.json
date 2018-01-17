@@ -9,5 +9,12 @@
         "vpicio_uni": "mpiio",
         "hacc_io_read": "posix",
         "hacc_io_write": "posix"
+    },
+    "app_name_map": {
+        "ior": "IOR",
+        "hacc_io_write": "HACC",
+        "hacc_io_read": "HACC",
+        "vpicio_uni": "VPIC",
+        "dbscan_read": "BD-CATS"
     }
 }
