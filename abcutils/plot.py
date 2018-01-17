@@ -216,7 +216,7 @@ def generate_umami(dataframe, plot_metrics):
         metric_config = abcutils.CONFIG['metric_labels'].get(metric)
         if metric_config:
             label = metric_config.get('label')
-            big_is_good = metric_config.get('big_is_good')
+            big_is_good = metric_config.get('bigisgood', True)
         else:
             label = metric
             big_is_good = True
