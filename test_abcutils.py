@@ -144,3 +144,14 @@ class TestAbcDataFrame(object):
         # -1 because of the column heading cell
         print (len(cells_dict) - 1) / 2, len(vector), len(vector.index)
         assert (len(cells_dict) - 1) / 2 == len(vector)
+
+    def test_grouped_boxplot(self):
+        """
+        test abcutils.plot.grouped_boxplot
+        """
+        ax = abcutils.plot.grouped_boxplot(self.dataframe, 'darshan_agg_perf_by_slowest_posix')
+        assert ax is not None
+        assert len(ax.get_xticklabels())
+        assert len(ax.get_yticks())
+
+
