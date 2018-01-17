@@ -3,8 +3,8 @@ A set of utility functions to assist in working with TOKIO-ABC results
 """
 
 import os
-import json
 import gzip
+import datetime
 import mimetypes
 import pandas
 import numpy
@@ -18,13 +18,17 @@ def load_and_synthesize_csv(csv_file, system="edison"):
 
     _, encoding = mimetypes.guess_type(csv_file)
     if encoding == 'gzip':
-        fp = gzip.open(csv_file, 'r')
+        filep = gzip.open(csv_file, 'r')
     else:
-        fp = open(csv_file, 'r')
+        filep = open(csv_file, 'r')
     dataframe = pandas.read_csv(csv_file).dropna()
-    fp.close()
+    filep.close()
 
     dataframe['_system'] = system
+
+    # Convert epoch timestamps to datetime objects
+    dataframe['_datetime_start'] = dataframe['_datetime_start'].apply(lambda x: datetime.datetime.fromtimestamp(x))
+    dataframe['_datetime_end'] = dataframe['_datetime_end'].apply(lambda x: datetime.datetime.fromtimestamp(x))
 
     # Did job do mostly reads or mostly writes?
     dataframe['darshan_write_job?'] = [1 if x else 0 for x in dataframe['darshan_biggest_write_api_bytes'] > dataframe['darshan_biggest_read_api_bytes']]
@@ -51,9 +55,6 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     dataframe['coverage_factor_write_bw'] = (dataframe['darshan_biggest_write_fs_bytes'] / dataframe['fs_tot_bytes_written']).replace([numpy.inf, -numpy.inf], numpy.nan)
     job_nodehrs = (dataframe['darshan_nprocs'] / abcutils.CONFIG['job_ppns'][system]) * dataframe['darshan_walltime'] / 3600
     dataframe['coverage_factor_nodehrs'] = (job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']).replace([numpy.inf, -numpy.inf], numpy.nan)
-
-    # We can get into trouble with infinite coverage factors--filter them out
-    
 
     # Calculate the relevant metrics for counters that have both a read and
     # writen component; mostly for convenience.
