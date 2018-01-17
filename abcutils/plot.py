@@ -165,7 +165,7 @@ def default_rename_boxplot_label(current_label):
     return new_label
 
 def grouped_boxplot(dataframe,
-                    plot_variable,
+                    plot_metric,
                     group_by=DEFAULT_BOXPLOT_GROUP_BY,
                     rename_label_func=default_rename_boxplot_label,
                     ax=None,
@@ -180,7 +180,7 @@ def grouped_boxplot(dataframe,
     if ax is None:
         _, ax = matplotlib.pyplot.subplots()
 
-    dataframe.boxplot(column=[plot_variable],
+    dataframe.boxplot(column=[plot_metric],
                       by=group_by,
                       ax=ax,
                       **(other_settings))
