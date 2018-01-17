@@ -154,4 +154,15 @@ class TestAbcDataFrame(object):
         assert len(ax.get_xticklabels())
         assert len(ax.get_yticks())
 
+    def test_plot_generate_umami(self):
+        """
+        test abcutils.plot.generate_umami
+        """
+        metrics = ['darshan_agg_perf_by_slowest_posix', 'coverage_factor_bw']
+        fig = abcutils.plot.generate_umami(self.dataframe, metrics)
+        print "Number of metrics plotted: %d vs expected %d" % ((len(fig.axes)/2), len(metrics))
+        assert len(fig.axes) == 2 * len(metrics) # two columns * number of metrics
 
+        print "Number of plotted data points: %d" % (len(fig.axes[0].get_xticklabels()))
+        num_datapoints = len(fig.axes[0].get_xticklabels())
+        assert num_datapoints > 1

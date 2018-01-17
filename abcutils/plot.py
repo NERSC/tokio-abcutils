@@ -5,6 +5,7 @@ import pandas
 import numpy
 import matplotlib
 import matplotlib.pyplot
+import tokio.tools.umami
 import abcutils
 
 DEFAULT_BOXPLOT_GROUP_BY = ['darshan_fpp_or_ssf_job', 'darshan_read_or_write_job', 'darshan_app']
@@ -203,3 +204,26 @@ def grouped_boxplot(dataframe,
     ax.set_ylim([-0.1, 1.1])
 
     return ax
+
+def generate_umami(dataframe, plot_metrics):
+    """
+    Generate a full UMAMI diagram based on an input dataframe and a list of
+    column names.  Relies on abcutil.CONFIG to create labels and determine if
+    big_is_good
+    """
+    umami = tokio.tools.umami.Umami()
+    for metric in plot_metrics:
+        metric_config = abcutils.CONFIG['metric_labels'].get(metric)
+        if metric_config:
+            label = metric_config.get('label')
+            big_is_good = metric_config.get('big_is_good')
+        else:
+            label = metric
+            big_is_good = True
+        umami[metric] = tokio.tools.umami.UmamiMetric(
+            timestamps=dataframe['_datetime_start'],
+            values=dataframe[metric],
+            label=label,
+            big_is_good=big_is_good)
+
+    return umami.plot()
