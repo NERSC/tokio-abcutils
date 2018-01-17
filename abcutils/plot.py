@@ -106,7 +106,7 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
                 cell_obj.set_alpha(0.25)
             else:
                 coeff = float(value)
-                pval = dataframe.loc[index][column.replace('correlation', 'p-value')]
+                pval = dataframe.loc[index][column.replace('coefficient', 'p-value')]
 
                 ### make moderate correlations **bold**
                 if abs(coeff) >= 0.30:
