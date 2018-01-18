@@ -124,9 +124,9 @@ class TestAbcDataFrame(object):
         """
         vector = abcutils.correlation.calc_correlation_vector(self.dataframe, SAMPLE_CORRELATE_WITH)
         ax = abcutils.plot.correlation_vector_table(vector)
+                                                    
         assert ax is not None
         cells_dict = ax.tables[0].get_celld()
-
 
         row_labels = []
         for cell_pos, cell_obj in ax.tables[0].get_celld().iteritems():
@@ -144,6 +144,14 @@ class TestAbcDataFrame(object):
         # -1 because of the column heading cell
         print (len(cells_dict) - 1) / 2, len(vector), len(vector.index)
         assert (len(cells_dict) - 1) / 2 == len(vector)
+
+        # check that labeling works
+        ax = abcutils.plot.correlation_vector_table(vector, row_name_map=abcutils.CONFIG['metric_labels'])
+        for cell_pos, cell_obj in ax.tables[0].get_celld().iteritems():
+            if cell_pos[1] == -1:
+                row_label = cell_obj.get_text().get_text()
+                print "%s has no underscores?" % row_label
+                assert '_' not in row_label
 
     def test_grouped_boxplot(self):
         """
