@@ -75,7 +75,7 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
     table = pandas.plotting.table(ax,
                                   dataframe[coefficient_keys],#.reindex(print_order),
                                   loc='upper right',
-                                  colWidths=[0.8, 0.8, 3.8],
+#                                 colWidths=[0.8, 0.8, 3.8],
                                   bbox=[0, 0, 1, 1],
                                   **kwargs)
     table.set_fontsize(fontsize)
@@ -133,7 +133,10 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
 
     ### Actually rewrite the cells now
     for cell_pos, new_value in remap_values.iteritems():
-        cells_dict[cell_pos].get_text().set_text(new_value)
+        text = cells_dict[cell_pos].get_text()
+        text.set_text(new_value)
+        # this helps when drawing gigantic tables for some reason
+        text.set_size(fontsize)
 
     return ax
 
@@ -213,13 +216,8 @@ def generate_umami(dataframe, plot_metrics):
     """
     umami = tokio.tools.umami.Umami()
     for metric in plot_metrics:
-        metric_config = abcutils.CONFIG['metric_labels'].get(metric)
-        if metric_config:
-            label = metric_config.get('label')
-            big_is_good = metric_config.get('bigisgood', True)
-        else:
-            label = metric
-            big_is_good = True
+        label = abcutils.CONFIG['metric_labels'].get(metric, metric)
+        big_is_good = abcutils.CONFIG['metric_big_is_good'].get(metric, True)
         umami[metric] = tokio.tools.umami.UmamiMetric(
             timestamps=dataframe['_datetime_start'],
             values=dataframe[metric],

@@ -71,6 +71,18 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     # heuristics to determine the parallel I/O API used.
     dataframe['darshan_app_api'] = ['posix' if x == 1 else 'mpiio' for x in dataframe['darshan_fpp_job?']]
 
+    # Aggregate some metadata ops
+    dataframe['fs_tot_openclose_ops'] = dataframe['fs_tot_open_ops'] + dataframe['fs_tot_close_ops']
+    metadata_ops_cols = [x for x in dataframe.columns if (x.startswith('fs_tot') and x.endswith('_ops'))]
+    dataframe['fs_tot_metadata_ops'] = dataframe[metadata_ops_cols].sum(axis=1)
+
+    # Calculate normalized performance metrics (modifies data in-place)
+    normalize_column(
+        dataframe=dataframe,
+        target_col='darshan_agg_perf_by_slowest_posix',
+        group_by_cols=['darshan_app', '_file_system', 'darshan_fpp_or_ssf_job', 'darshan_read_or_write_job'],
+        new_col_base='darshan_normalized_perf')
+
     return dataframe
 
 def normalize_column(dataframe, target_col, group_by_cols, new_col_base):
