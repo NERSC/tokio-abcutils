@@ -25,10 +25,35 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     filep.close()
 
     dataframe['_system'] = system
+    def classify_subsystem(concat):
+        """Distinguish cori-knl jobs from cori-haswell jobs
 
-    # Convert epoch timestamps to datetime objects
-    dataframe['_datetime_start'] = dataframe['_datetime_start'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-    dataframe['_datetime_end'] = dataframe['_datetime_end'].apply(lambda x: datetime.datetime.fromtimestamp(x))
+        Args:
+            concat (str): string of form "_system darshan_nprocs"
+
+        Returns:
+            String which is either the first space-delimited token in `concat`,
+            'cori-knl', or 'cori-haswell'
+        """
+        system, nprocs = concat.split(None, 2)
+        if system == "cori":
+            if int(nprocs) > 1024:
+                return 'cori-knl'
+            return 'cori-haswell'
+        return system
+
+    dataframe['_subsystem'] = dataframe[['_system', 'darshan_nprocs']]\
+        .apply(lambda x: "%s %d" % (x[0], x[1]), axis=1)\
+        .apply(classify_subsystem)
+
+    dataframe['_test_platform'] = dataframe['_file_system'] + '@' + dataframe['_subsystem']
+
+    # Convert timestamps to datetime objects.  Try both epoch timestamps and datetime strings.
+    for datetime_field in '_datetime_start', '_datetime_end':
+        if isinstance(dataframe[datetime_field][0], basestring):
+            dataframe[datetime_field] = pandas.to_datetime(dataframe[datetime_field])
+        else:
+            dataframe[datetime_field] = dataframe[datetime_field].apply(lambda x: datetime.datetime.fromtimestamp(x))
 
     # Did job do mostly reads or mostly writes?
     dataframe['darshan_write_job?'] = [1 if x else 0 for x in dataframe['darshan_biggest_write_api_bytes'] > dataframe['darshan_biggest_read_api_bytes']]
@@ -54,7 +79,8 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     dataframe['coverage_factor_read_bw'] = (dataframe['darshan_biggest_read_fs_bytes'] / dataframe['fs_tot_bytes_read']).replace([numpy.inf, -numpy.inf], numpy.nan)
     dataframe['coverage_factor_write_bw'] = (dataframe['darshan_biggest_write_fs_bytes'] / dataframe['fs_tot_bytes_written']).replace([numpy.inf, -numpy.inf], numpy.nan)
     job_nodehrs = (dataframe['darshan_nprocs'] / abcutils.CONFIG['job_ppns'][system]) * dataframe['darshan_walltime'] / 3600
-    dataframe['coverage_factor_nodehrs'] = (job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']).replace([numpy.inf, -numpy.inf], numpy.nan)
+    if 'jobsdb_concurrent_nodehrs' in dataframe.columns:
+        dataframe['coverage_factor_nodehrs'] = (job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']).replace([numpy.inf, -numpy.inf], numpy.nan)
 
     # Calculate the relevant metrics for counters that have both a read and
     # writen component; mostly for convenience.
@@ -72,15 +98,18 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     dataframe['darshan_app_api'] = ['posix' if x == 1 else 'mpiio' for x in dataframe['darshan_fpp_job?']]
 
     # Aggregate some metadata ops
-    dataframe['fs_tot_openclose_ops'] = dataframe['fs_tot_open_ops'] + dataframe['fs_tot_close_ops']
-    metadata_ops_cols = [x for x in dataframe.columns if (x.startswith('fs_tot') and x.endswith('_ops'))]
-    dataframe['fs_tot_metadata_ops'] = dataframe[metadata_ops_cols].sum(axis=1)
+    if 'fs_tot_openclose_ops' not in dataframe.columns:
+        dataframe['fs_tot_openclose_ops'] = dataframe['fs_tot_open_ops'] + dataframe['fs_tot_close_ops']
+
+    if 'fs_tot_metadata_ops' not in dataframe.columns:
+        metadata_ops_cols = [x for x in dataframe.columns if (x.startswith('fs_tot') and x.endswith('_ops'))]
+        dataframe['fs_tot_metadata_ops'] = dataframe[metadata_ops_cols].sum(axis=1)
 
     # Calculate normalized performance metrics (modifies data in-place)
     normalize_column(
         dataframe=dataframe,
         target_col='darshan_agg_perf_by_slowest_posix',
-        group_by_cols=['darshan_app', '_file_system', 'darshan_fpp_or_ssf_job', 'darshan_read_or_write_job'],
+        group_by_cols=['darshan_app', '_subsystem', '_file_system', 'darshan_fpp_or_ssf_job', 'darshan_read_or_write_job'],
         new_col_base='darshan_normalized_perf')
 
     return dataframe

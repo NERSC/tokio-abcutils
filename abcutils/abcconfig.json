@@ -15,7 +15,8 @@
     },
     "job_ppns": {
         "cori": 16,
-        "edison": 16
+        "edison": 16,
+        "mira": 16
     },
     "metric_big_is_good": {
         "darshan_biggest_api_bytes": false,
