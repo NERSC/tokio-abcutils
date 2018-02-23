@@ -1,6 +1,8 @@
 """
 Useful plotting routines for examining TOKIO-ABC data
 """
+import time
+import datetime
 import pandas
 import numpy
 import matplotlib
@@ -168,11 +170,8 @@ def default_rename_boxplot_label(current_label):
 
     return new_label
 
-def grouped_boxplot(dataframe,
-                    plot_metric,
-                    group_by=DEFAULT_BOXPLOT_GROUP_BY,
-                    rename_label_func=default_rename_boxplot_label,
-                    ax=None,
+def grouped_boxplot(dataframe, plot_metric, group_by=DEFAULT_BOXPLOT_GROUP_BY,
+                    rename_label_func=default_rename_boxplot_label, ax=None,
                     **kwargs):
     """
     Create a boxplot to show the distribution of one column that is grouped by a
@@ -205,6 +204,87 @@ def grouped_boxplot(dataframe,
     # subsequent analyses are free to override these ticks
     ax.yaxis.set_ticks(numpy.linspace(0.0, 1.0, 6))
     ax.set_ylim([-0.1, 1.1])
+
+    return ax
+
+
+def distribution_over_time(dataframe, plot_metric, date_start, date_end, date_delta=datetime.timedelta(days=7)):
+    """
+    Divide a dataframe of time series data into bins so that distributions
+    within bins can be calculated over time, then return a list of bins,
+    a list of binned series, and a list of human-readable bin labels.
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe to divide into bins
+        plot_metric (str): column name to divide into bins
+        date_start (datetime.datetime): leading edge of first bin (inclusive)
+        date_end (datetime.datetime): trailing edge of last bin (exclusive)
+        date_delta (datetime.timedelta): width of each bin
+
+    Returns:
+        x (list of float): epoch-seconds corresponding to leading edge of bin
+        y (list of pandas.Series): subset of dataframe falling into the bin
+        x_labels (list of str): human-readable labels for each element of x
+    """
+    def increment_month(date):
+        now_month = date.month
+        now_year = date.year
+        next_month = now_month + 1 if now_month < 12 else 1
+        next_year = now_year + 1 if now_month == 12 else now_year
+        return date.replace(year=next_year, month=next_month)
+
+    x = []
+    x_labels = []
+    y = []
+    date = date_start
+
+    while date < date_end:
+        # next_date = increment_month(date)
+        next_date = date + date_delta
+        y.append(dataframe[(dataframe['_datetime_start'] >= date) & (dataframe['_datetime_start'] < next_date)][plot_metric])
+        x.append(time.mktime(date.timetuple()))
+        x_labels.append(date.strftime("%b %d, %Y"))
+
+        date = next_date
+    return x, y, x_labels
+
+def timeseries_boxplot(dataframe, plot_metric, date_start, date_end,
+                       date_delta=datetime.timedelta(days=7), ax=None, **kwargs):
+    """
+    Create a boxplot to show the distribution of one column that is grouped by a
+    list of other columns.
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe to divide into bins
+        plot_metric (str): column name to divide into bins
+        date_start (datetime.datetime): leading edge of first bin (inclusive)
+        date_end (datetime.datetime): trailing edge of last bin (exclusive)
+        date_delta (datetime.timedelta): width of each bin
+        ax (matplotlib.axes.Axes): optional axes to draw in (default: create new
+            axes)
+        kwargs (dict): additional styling parameters to pass to matplotlib's
+            boxplot function
+
+    Returns:
+        matplotlib.axes.Axes containing the generated boxplot
+    """
+    other_settings = DEFAULT_BOXPLOT_SETTINGS.copy()
+    other_settings.update(kwargs)
+
+    if ax is None:
+        _, ax = matplotlib.pyplot.subplots()
+
+    x, y, x_labels = distribution_over_time(dataframe, plot_metric, date_start, date_end, date_delta)
+    ax.boxplot(y, positions=x, **other_settings)
+
+    ax.set_ylim(0)
+    ax.yaxis.grid(True)
+    ax.set_title("")
+    ax.set_xticklabels(x_labels, rotation=90)
+    ax.get_figure().suptitle("")
+    ax.get_figure().subplots_adjust(hspace=0.05, wspace=0.05)
+
+    ax.xaxis.grid(True)
 
     return ax
 

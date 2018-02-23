@@ -162,6 +162,16 @@ class TestAbcDataFrame(object):
         assert len(ax.get_xticklabels())
         assert len(ax.get_yticks())
 
+    def test_plot_timeseries_boxplot(self):
+        """
+        test abcutils.plot.timeseries_boxplot
+        """
+        ax = abcutils.plot.timeseries_boxplot(self.dataframe, 'darshan_agg_perf_by_slowest_posix',
+            self.dataframe['_datetime_start'].min(), self.dataframe['_datetime_end'].max())
+        assert ax is not None
+        assert len(ax.get_xticklabels())
+        assert len(ax.get_yticks())
+
     def test_plot_generate_umami(self):
         """
         test abcutils.plot.generate_umami
