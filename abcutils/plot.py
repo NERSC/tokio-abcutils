@@ -269,6 +269,7 @@ def timeseries_boxplot(dataframe, plot_metric, date_start, date_end,
         matplotlib.axes.Axes containing the generated boxplot
     """
     other_settings = DEFAULT_BOXPLOT_SETTINGS.copy()
+    other_settings['widths'] = date_delta.total_seconds() * 5 / 7
     other_settings.update(kwargs)
 
     if ax is None:
