@@ -260,5 +260,15 @@
         "topology_job_avg_radius": "Average Job Radius",
         "topology_job_max_radius": "Maximum Job Radius",
         "topology_job_min_radius": "Minimum Job Radius"
+    },
+    "benchmark_labels": {
+        "ior_shared_read": "IOR shared-file read",
+        "ior_shared_write": "IOR shared-file write",
+        "ior_fpp_read": "IOR file-per-process read",
+        "ior_fpp_write": "IOR file-per-process write",
+        "dbscan_read_shared_read": "BD-CATS shared-file read",
+        "vpicio_uni_shared_write": "VPIC shared-file write",
+        "hacc_io_read_fpp_read": "HACC file-per-process read",
+        "hacc_io_write_fpp_write": "HACC file-per-process write"
     }
 }
