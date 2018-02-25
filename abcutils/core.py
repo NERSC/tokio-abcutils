@@ -71,6 +71,7 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     fpp_read = remainder_read / dataframe['darshan_biggest_read_api_files']
     dataframe['darshan_fpp_write_job?'] = [1 if abs(x) < 0.05 else 0 for x in fpp_write]
     dataframe['darshan_fpp_read_job?'] = [1 if abs(x) < 0.05 else 0 for x in fpp_read]
+    dataframe['darshan_agg_perf_by_slowest_posix_gibs'] = dataframe['darshan_agg_perf_by_slowest_posix'] / 1024.0
 
     # Simplify the darshan_app counter
     dataframe['darshan_app'] = [os.path.basename(x) for x in dataframe['darshan_app']]
@@ -104,6 +105,11 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     if 'fs_tot_metadata_ops' not in dataframe.columns:
         metadata_ops_cols = [x for x in dataframe.columns if (x.startswith('fs_tot') and x.endswith('_ops'))]
         dataframe['fs_tot_metadata_ops'] = dataframe[metadata_ops_cols].sum(axis=1)
+
+    # Calculate a benchmark id for ease of aggregation
+    dataframe['_benchmark_id'] = dataframe['darshan_app'] + "_" \
+        + dataframe['darshan_fpp_or_ssf_job'] + "_" \
+        + dataframe['darshan_read_or_write_job']
 
     # Calculate normalized performance metrics (modifies data in-place)
     normalize_column(
