@@ -92,7 +92,7 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
         value = cell_obj.get_text().get_text()
         height_scale = 1.0
         if i == 0:    # column headers
-            remap_values[cell_pos] = col_name_map.get(value, value)
+            remap_values[cell_pos] = col_name_map.get(value, value).replace(' ', '\n')
             height_scale = 2.0
         elif j == -1: # index cell
             remap_values[cell_pos] = row_name_map.get(value, value)
