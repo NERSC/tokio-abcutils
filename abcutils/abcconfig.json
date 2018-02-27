@@ -127,7 +127,7 @@
         "coverage_factor_read_bw": "Coverage Factor (Read BW)",
         "coverage_factor_write_bw": "Coverage Factor (Write BW)",
         "darshan_agg_perf_by_slowest_posix": "Performance (MiB/s)",
-        "darshan_agg_perf_by_slowest_posix_gib": "Performance (GiB/s)",
+        "darshan_agg_perf_by_slowest_posix_gibs": "Performance (GiB/s)",
         "darshan_app": "Application",
         "darshan_app_api": "API",
         "darshan_biggest_api_bytes": "Bytes",
