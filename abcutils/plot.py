@@ -276,7 +276,7 @@ def timeseries_boxplot(dataframe, plot_metric, date_start, date_end,
         _, ax = matplotlib.pyplot.subplots()
 
     x, y, x_labels = distribution_over_time(dataframe, plot_metric, date_start, date_end, date_delta)
-    ax.boxplot(y, positions=x, **other_settings)
+    ax.boxplot(y, positions=[xx + date_delta.total_seconds() / 2 for xx in x], **other_settings)
 
     ax.set_ylim(0)
     ax.yaxis.grid(True)
@@ -288,6 +288,58 @@ def timeseries_boxplot(dataframe, plot_metric, date_start, date_end,
     ax.xaxis.grid(True)
 
     return ax
+
+def timeseries_manylines(lines, colorfunc=None, ax=None, **kwargs):
+    """
+    Plot a set of lines on a time series plot
+
+    Args:
+        lines (list of tuples of lists): data to draw.  each tuple contains
+            (x, y) where x, y are lists of x and y values belonging to one line.
+        colorfunc (function): takes a single element of `lines` and returns a
+            color that can be passed to matplotlib.plot()
+        ax (matplotlib.axes.Axes): optional axes to draw in (default: create new
+            axes)
+        kwargs (dict): additional styling parameters to pass to matplotlib's
+            plot function
+    """
+    other_settings = {
+        'marker': '',
+        'linestyle': '-',
+        'linewidth': 4,
+        'markersize': 5,
+    }
+    other_settings.update(kwargs)
+
+    if ax is None:
+        _, ax = matplotlib.pyplot.subplots()
+
+    for x, y in lines:
+        if colorfunc:
+            color = colorfunc((x, y))
+        else:
+            color = 'black'
+        ax.plot(x, y, color=color, markerfacecolor=color, **other_settings)
+
+    return ax
+
+def timeseries_streaks(dataframe, streaks, ax=None, **kwargs):
+    """
+    Plot a set of streaks on a time series plot
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe to which the streaks parameter refers
+        streaks (list): output of abcutils.features.find_streaks_df()
+        ax (matplotlib.axes.Axes): optional axes to draw in (default: create new axes)
+        kwargs (dict): additional styling parameters to pass to matplotlib's plot function
+    """
+    colorfunc = lambda x: 'green' if x[1][-1] > x[1][0] else 'red'
+    lines = []
+    for streak in streaks:
+        x = [time.mktime((dataframe.loc[x]['_datetime_start']).timetuple()) for x in streak[0]]
+        lines.append((x, streak[1]))
+
+    return timeseries_manylines(lines, colorfunc, ax, **kwargs)
 
 def generate_umami(dataframe, plot_metrics):
     """
