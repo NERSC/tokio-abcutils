@@ -50,7 +50,7 @@ def load_and_synthesize_csv(csv_file, system="edison"):
 
     # Convert timestamps to datetime objects.  Try both epoch timestamps and datetime strings.
     for datetime_field in '_datetime_start', '_datetime_end':
-        if isinstance(dataframe[datetime_field][0], basestring):
+        if isinstance(dataframe[datetime_field].iloc[0], basestring):
             dataframe[datetime_field] = pandas.to_datetime(dataframe[datetime_field])
         else:
             dataframe[datetime_field] = dataframe[datetime_field].apply(lambda x: datetime.datetime.fromtimestamp(x))
