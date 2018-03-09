@@ -8,6 +8,7 @@ import datetime
 import mimetypes
 import pandas
 import numpy
+import scipy.stats
 import abcutils
 
 def load_and_synthesize_csv(csv_file, system="edison"):
@@ -174,3 +175,14 @@ def apply_filters(dataframe, filter_list, verbose=False):
         print "%d rows remaining" % len(dataframe[net_filter].index)
 
     return dataframe[net_filter]
+
+def geometric_stdev(vector):
+    """Calculate the geometric standard deviation of a vector
+    Args:
+        vector: any iterable of numerics
+    Returns:
+        the geometric standard deviation of `vector`
+    """
+    return numpy.exp(numpy.sqrt(
+        sum([(numpy.log(xi / scipy.stats.gmean(vector)))**2.0 for xi in vector])
+        / (len(vector) - 1)))
