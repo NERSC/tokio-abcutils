@@ -1,4 +1,6 @@
 import time
+import warnings
+import pandas
 import scipy.stats
 
 class Streak(object):
@@ -163,3 +165,127 @@ def sliding_window_slopes(dataframe, column, start, end, width, delta):
         date += delta 
 
     return result
+
+def calculate_sma(dataframe, x_column, y_column, window, **kwargs):
+    """Calculate the simple moving average for a column of a dataset
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
+            should be calculated
+        x_column (str): name of column to treat as x values when calculating
+            the simple moving average
+        y_column (str): name of column over which simple moving average should
+            be calculated
+        window (int): number of consecutive dataframe rows to include in the
+            simple moving average
+        kwargs: parameters to pass to pandas.Series.rolling
+
+    Returns:
+        Series of simple moving averages indexed by x_column
+    """
+    default_args = {
+        'min_periods': 1,
+        'window': window,
+        'center': True,
+    }
+    default_args.update(kwargs)
+
+    filtered_series = dataframe[[x_column, y_column]].set_index(x_column).iloc[:, 0]
+
+    return filtered_series.rolling(window=window, **kwargs).mean().sort_index()
+
+def sma_intercepts(dataframe, column, short_window, long_window):
+    """Identify places where two simple moving averages intercept
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
+            should be calculated
+        column (str): name of column over in dataframe from which sliding-window
+            slopes should be calculated 
+        short_window (int): number of consecutive dataframe rows to include in
+            the short window
+        long_window (int): number of consecutive dataframe rows to include in
+            the long window
+
+    Returns:
+        DataFrame with indices corresponding to dataframe
+    """
+    x_column = '_datetime_start'
+
+    sma_short = calculate_sma(dataframe, x_column, column, window=short_window)
+    sma_long = calculate_sma(dataframe, x_column, column, window=long_window)
+
+    results = {
+        x_column: [],
+        'positive': [],
+    }
+
+    # Walk through both SMAs and find intercepts
+    above = None
+    for index, value in enumerate(sma_short):
+        if above is None:
+            above = value > sma_long[index]
+        above_now = value > sma_long[index]
+        if above_now != above:
+            results[x_column].append(sma_short.index[index])
+            results['positive'].append(not above)
+        above = above_now
+
+    # Now convert sma index values to dataframe.index values
+    x_series = dataframe[x_column]
+    results['index'] = [x_series[x_series == x].index[0] for x in results[x_column]]
+
+    return pandas.DataFrame(results).set_index('index')
+
+def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3):
+    """Identify local minima and maxima for non-overlapping SMA regions
+
+    Segment `dataframe` into regions based on where their short and long SMAs
+    intersect, and then calculate the minimum (if short < long) or maximum (if
+    short > long) value within each region.
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
+            should be calculated
+        column (str): name of column over in dataframe from which sliding-window
+            slopes should be calculated 
+        short_window (int): number of consecutive dataframe rows to include in
+            the short window
+        long_window (int): number of consecutive dataframe rows to include in
+            the long window
+        min_domain (int): ignore local minima calculated from sets of rows with
+            fewer than `min_domain` rows
+
+    Returns:
+        DataFrame with indices corresponding to dataframe
+    """
+    x_column = '_datetime_start'
+
+    intercepts = sma_intercepts(dataframe, column, short_window, long_window)
+
+    results = {
+        'index': [],
+        x_column: [],
+        'positive': [],
+        column: [],
+    }
+
+    # Iterate through all the transition points and identify mins and maxes
+    # between each intersection.  Note that we are ignoring the unbounded
+    # first and last regions
+    prev_row = None
+    for row in intercepts.itertuples():
+        if prev_row is not None:
+            minmax_idx = None
+            if prev_row.positive and not row.positive:
+                minmax_idx = dataframe.loc[prev_row.Index:row.Index][column].idxmax()
+            elif not prev_row.positive and row.positive:
+                minmax_idx = dataframe.loc[prev_row.Index:row.Index][column].idxmin()
+            if minmax_idx:
+                results['index'].append(minmax_idx)
+                results[x_column].append(dataframe.loc[minmax_idx][x_column])
+                results['positive'].append(prev_row.positive)
+                results[column].append(dataframe.loc[minmax_idx][column])
+        prev_row = row
+
+    return pandas.DataFrame(results).set_index('index')
