@@ -237,7 +237,9 @@ def sma_intercepts(dataframe, column, short_window, long_window):
 
     return pandas.DataFrame(results).set_index('index')
 
-def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3):
+def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
+                     min_func=pandas.Series.idxmin,
+                     max_func=pandas.Series.idxmax):
     """Identify local minima and maxima for non-overlapping SMA regions
 
     Segment `dataframe` into regions based on where their short and long SMAs
@@ -255,6 +257,12 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3)
             the long window
         min_domain (int): ignore local minima calculated from sets of rows with
             fewer than `min_domain` rows
+        min_func (function): function to apply to a Series describing a region
+            to determine the index corresponding to the most extreme value for
+            regions where the short SMA < long SMA
+        max_func (function): function to apply to a Series describing a region
+            to determine the index corresponding to the most extreme value for
+            regions where the short SMA > long SMA
 
     Returns:
         DataFrame with indices corresponding to dataframe
@@ -279,9 +287,9 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3)
             minmax_idx = None
             region = dataframe.loc[prev_row.Index:row.Index][column]
             if prev_row.positive and not row.positive:
-                minmax_idx = region.idxmax()
+                minmax_idx = max_func(region)
             elif not prev_row.positive and row.positive:
-                minmax_idx = region.idxmin()
+                minmax_idx = min_func(region)
             if minmax_idx and len(region) >= min_domain:
                 results['index'].append(minmax_idx)
                 results[x_column].append(dataframe.loc[minmax_idx][x_column])
