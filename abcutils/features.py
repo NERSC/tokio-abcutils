@@ -277,11 +277,12 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3)
     for row in intercepts.itertuples():
         if prev_row is not None:
             minmax_idx = None
+            region = dataframe.loc[prev_row.Index:row.Index][column]
             if prev_row.positive and not row.positive:
-                minmax_idx = dataframe.loc[prev_row.Index:row.Index][column].idxmax()
+                minmax_idx = region.idxmax()
             elif not prev_row.positive and row.positive:
-                minmax_idx = dataframe.loc[prev_row.Index:row.Index][column].idxmin()
-            if minmax_idx:
+                minmax_idx = region.idxmin()
+            if minmax_idx and len(region) >= min_domain:
                 results['index'].append(minmax_idx)
                 results[x_column].append(dataframe.loc[minmax_idx][x_column])
                 results['positive'].append(prev_row.positive)
