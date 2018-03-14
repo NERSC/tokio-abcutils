@@ -4,6 +4,7 @@ A set of utility functions to assist in working with TOKIO-ABC results
 
 import os
 import gzip
+import time
 import datetime
 import mimetypes
 import pandas
@@ -186,3 +187,13 @@ def geometric_stdev(vector):
     return numpy.exp(numpy.sqrt(
         sum([(numpy.log(xi / scipy.stats.gmean(vector)))**2.0 for xi in vector])
         / (len(vector) - 1)))
+
+def pd2epoch(timestamp):
+    """Convert a pandas.Timestamp to seconds-since-epoch
+
+    Args:
+        timestamp (pandas.Timestamp): value to convert from
+    Returns:
+        float representing seconds since epoch in UTC
+    """
+    return time.mktime(timestamp.to_pydatetime().timetuple())

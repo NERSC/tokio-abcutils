@@ -50,15 +50,14 @@ def autocorrelation(dataset, loci, xmin, xmax, delta, norm_by_locus=False, norm=
     Calculate the autocorrelation of an arbitrary metric.
     
     Args:
-        dataset (list of tuples): list of (x, y) tuples over which the PDF
-            should be calculated
-        loci (list): x values of interest around which the PDF should be calculated
-        xmin: minimum value of x in the resulting PDF
-        xmax: maximum value of x in the resulting PDF
-        delta: resolution of PDF function expressed in the same units of x
-        norm_by_locus (bool): express PDF in terms of fraction performance
+        dataset (pandas.Series): series of data indexed by x
+        loci (list): index of `dataset` around which ACF should be calculated
+        xmin: minimum value of x in the resulting ACF
+        xmax: maximum value of x in the resulting ACF
+        delta: resolution of ACF function expressed in the same units of x
+        norm_by_locus (bool): express ACF in terms of fraction performance
             relative to each locus
-        norm (bool): express PDF in terms of fraction performance relative to
+        norm (bool): express ACF in terms of fraction performance relative to
             global mean
         agg_func (function): function to apply to each list of data points to
             generate y values
@@ -75,12 +74,9 @@ def autocorrelation(dataset, loci, xmin, xmax, delta, norm_by_locus=False, norm=
     xbins = numpy.arange(num_bins, dtype='float64') * delta + xmin
     ybin_vals = [[] for _ in range(num_bins)] # list of lists containing all raw values of each bin
 
-    # convert to dataframe so we can do some fancy indexing
-    dataset_df = pandas.DataFrame(dataset, columns=['x', 'y']).set_index('x')
     for locus in loci:
-        locus_y = dataset_df.loc[locus][0]
-        for row in dataset_df.itertuples():
-            x, y = row[0], row[1]
+        locus_y = dataset.loc[locus]
+        for x, y in dataset.iteritems():
             dx = x - locus
             
             if abs(dx) > width:
@@ -117,7 +113,7 @@ def autocorrelation(dataset, loci, xmin, xmax, delta, norm_by_locus=False, norm=
 
     # normalize to the global average measurement?
     if norm:
-        global_mean = agg_func(dataset_df['y'])
+        global_mean = agg_func(dataset.values)
         ybins /= global_mean
         sbins /= global_mean
         qbins /= global_mean

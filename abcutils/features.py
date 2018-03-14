@@ -2,6 +2,10 @@ import time
 import warnings
 import pandas
 import scipy.stats
+import abcutils
+
+SHORT_WINDOW = 7
+LONG_WINDOW = 28
 
 class Streak(object):
     """
@@ -301,3 +305,56 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
         prev_row = row
 
     return pandas.DataFrame(results).set_index('index')
+
+def generate_loci_sma(dataframe, plot_metric, mins, maxes, **kwargs):
+    """
+    Returns:
+        pandas.Series indexed as `dataframe`, named `_datetime_start`,
+        and containing `_datetime_start` values corresponding to loci.
+    """
+    args = {
+        'short_window': SHORT_WINDOW,
+        'long_window': LONG_WINDOW,
+        'min_domain': SHORT_WINDOW,
+    }
+    args.update(kwargs)
+
+    min_vals = None
+    max_vals = None
+    if mins:
+        min_vals = abcutils.features.sma_local_minmax(
+            dataframe=dataframe,
+            column=plot_metric,
+            max_func=pandas.Series.idxmin,
+            **args)
+    if maxes:
+        max_vals = abcutils.features.sma_local_minmax(
+            dataframe=dataframe,
+            column=plot_metric,
+            min_func=pandas.Series.idxmax,
+            **args)
+    return pandas.concat((min_vals, max_vals))['_datetime_start'].sort_values()
+
+def generate_loci_peakdetect(dataframe, plot_metric, mins, maxes, **kwargs):
+    """
+    Returns:
+        pandas.Series indexed as `dataframe`, named `_datetime_start`,
+        and containing `_datetime_start` values corresponding to loci.
+    """
+    args = {
+        'lookahead': 7
+    }
+    args.update(kwargs)
+
+    highs, lows = peakdetect.peakdetect(dataframe[plot_metric].sort_index(ascending=False),
+                                                 dataframe.sort_index(ascending=False).index,
+                                                 **args)
+    min_vals = None
+    max_vals = None
+    if mins:
+        indices = [x[0] for x in lows]
+        min_vals = dataframe.loc[indices]['_datetime_start']
+    if maxes:
+        indices = [x[0] for x in highs]
+        max_vals = dataframe.loc[indices]['_datetime_start']
+    return pandas.concat((min_vals, max_vals)).sort_values()
