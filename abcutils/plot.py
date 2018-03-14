@@ -341,7 +341,7 @@ def timeseries_streaks(dataframe, streaks, ax=None, **kwargs):
 
     return timeseries_manylines(lines, colorfunc, ax, **kwargs)
 
-def generate_umami(dataframe, plot_metrics):
+def generate_umami(dataframe, plot_metrics, highlight_index=-1):
     """
     Generate a full UMAMI diagram based on an input dataframe and a list of
     column names.  Relies on abcutil.CONFIG to create labels and determine if
@@ -357,7 +357,7 @@ def generate_umami(dataframe, plot_metrics):
             label=label,
             big_is_good=big_is_good)
 
-    return umami.plot()
+    return umami.plot(highlight_index=highlight_index)
 
 def clustered_correlation_bars(dataframes, plot_metrics, column_key=None, width=0.5, ax=None):
     """

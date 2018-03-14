@@ -280,6 +280,8 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
         x_column: [],
         'positive': [],
         column: [],
+        'region_start': [],
+        'region_end': [],
     }
 
     # Iterate through all the transition points and identify mins and maxes
@@ -302,6 +304,8 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
                     results[x_column].append(dataframe.loc[minmax_idx][x_column])
                     results['positive'].append(prev_row.positive)
                     results[column].append(dataframe.loc[minmax_idx][column])
+                    results['region_start'].append(prev_row.Index)
+                    results['region_end'].append(row.Index)
         prev_row = row
 
     return pandas.DataFrame(results).set_index('index')
@@ -309,8 +313,10 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
 def generate_loci_sma(dataframe, plot_metric, mins, maxes, **kwargs):
     """
     Returns:
-        pandas.Series indexed as `dataframe`, named `_datetime_start`,
-        and containing `_datetime_start` values corresponding to loci.
+        pandas.DataFrame indexed as `dataframe` with columns
+         * `_datetime_start`, Timestamp values corresponding to each locus
+         * `_region_start`, index values corresponding to the lower bound of each locus's region
+         * `_region_end`, index values corresponding to the upper bound of each locus's region
     """
     args = {
         'short_window': SHORT_WINDOW,
@@ -333,7 +339,7 @@ def generate_loci_sma(dataframe, plot_metric, mins, maxes, **kwargs):
             column=plot_metric,
             min_func=pandas.Series.idxmax,
             **args)
-    return pandas.concat((min_vals, max_vals))['_datetime_start'].sort_values()
+    return pandas.concat((min_vals, max_vals)).sort_values('_datetime_start')
 
 def generate_loci_peakdetect(dataframe, plot_metric, mins, maxes, **kwargs):
     """
