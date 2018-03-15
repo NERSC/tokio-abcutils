@@ -270,5 +270,15 @@
         "vpicio_uni_shared_write": "VPIC shared-file write",
         "hacc_io_read_fpp_read": "HACC file-per-process read",
         "hacc_io_write_fpp_write": "HACC file-per-process write"
+    },
+    "benchmark_labels_short": {
+        "ior_shared_read": "IOR/shared(R) ",
+        "ior_shared_write": "IOR/shared(W)",
+        "ior_fpp_read": "IOR/fpp(R) ",
+        "ior_fpp_write": "IOR/fpp(W)",
+        "dbscan_read_shared_read": "BD-CATS(R)",
+        "vpicio_uni_shared_write": "VPIC(W)",
+        "hacc_io_read_fpp_read": "HACC(R)",
+        "hacc_io_write_fpp_write": "HACC(W)"
     }
 }
