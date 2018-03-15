@@ -3,7 +3,7 @@ import warnings
 import numpy
 import abcutils
 
-def identify_contributors(dataframe, dependent_column, expected_minima=-1, want_good=False):
+def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good=False):
     """Identify secondary metrics that coincide with a good/bad primary metric
 
     Args:
@@ -13,7 +13,7 @@ def identify_contributors(dataframe, dependent_column, expected_minima=-1, want_
             to the metric to which contributors will be identified
         want_good (bool): are we identifying metrics that are unusually good
             (True) or unusually bad (False)?
-        expected_minima (int): iloc of `dataframe` that is the expected local
+        minima_iloc (int): iloc of `dataframe` that is the expected local
             minima; default of -1 selects the final value in the dataframe
     Returns:
         List of dicts, where each dicts corresponds to a single metric that
@@ -34,10 +34,10 @@ def identify_contributors(dataframe, dependent_column, expected_minima=-1, want_
                 cutoff = numpy.nanpercentile(dataframe[column].iloc[0:-1], 25)
             except TypeError: # if passed non-numeric columns, just skip them
                 continue
-            if dataframe[column].iloc[expected_minima] < cutoff:
+            if dataframe[column].iloc[minima_iloc] < cutoff:
                 result = {
                     'metric': column,
-                    'value': dataframe[column].iloc[expected_minima],
+                    'value': dataframe[column].iloc[minima_iloc],
                     'comparator': "<",
                     'cutoff': cutoff,
                 }
@@ -49,20 +49,20 @@ def identify_contributors(dataframe, dependent_column, expected_minima=-1, want_
                 cutoff = numpy.nanpercentile(dataframe[column].iloc[0:-1], 75)
             except TypeError:
                 continue
-            if dataframe[column].iloc[expected_minima] > cutoff:
+            if dataframe[column].iloc[minima_iloc] > cutoff:
                 result = {
                     'metric': column,
-                    'value': dataframe[column].iloc[-1],
+                    'value': dataframe[column].iloc[minima_iloc],
                     'comparator': ">",
                     'cutoff': cutoff,
                 }
 
         if column == dependent_column:
-            if result is None and expected_minima is not None:
+            if result is None and minima_iloc is not None:
                 warnings.warn("%s=%s (index %s) not in the %s quartile (%s) of %d values" %
                               (column,
-                               dataframe[column].iloc[expected_minima],
-                               dataframe[column].index[expected_minima],
+                               dataframe[column].iloc[minima_iloc],
+                               dataframe[column].index[minima_iloc],
                                "best" if want_good else "worst",
                                cutoff,
                                len(dataframe)))
@@ -99,6 +99,8 @@ def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False
               containing fewer than `min_points` benchmark measurements
             * `_loci_unclassified`: number of loci which had no contributors
             * `_loci_classified`: number of loci for which contributors were found
+            * `_tot_<metric>`: number of rows that registered a non-NaN value
+              for <metric>
     """
     results = {
         '_loci_ignored': 0,
@@ -111,14 +113,20 @@ def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False
         region_idx0 = dataframe.index.get_loc(locus.region_start)
         region_idxf = dataframe.index.get_loc(locus.region_end)
         region_df = dataframe.iloc[region_idx0:region_idxf]
-        expected_minima = region_df.index.get_loc(locus.Index)
+        minima_iloc = region_df.index.get_loc(locus.Index)
         if len(region_df) < min_points:
             results['_loci_ignored'] += 1
         else:
             contributors = identify_contributors(region_df,
                                                  plot_metric,
-                                                 want_good=want_good,
-                                                 expected_minima=expected_minima)
+                                                 minima_iloc=minima_iloc,
+                                                 want_good=want_good)
+
+            for metric, count in region_df.count().iteritems():
+                if count > 0:
+                    key = '_tot_' + metric
+                    results[key] = results.get(key, 0) + 1
+
             if len(contributors) == 0:
                 results['_loci_unclassified'] += 1
             elif len(contributors) == 1 and contributors[0].get('error', False):

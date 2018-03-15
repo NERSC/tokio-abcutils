@@ -504,13 +504,16 @@ def locus_summary(dataframe, plot_metric, loci, ax=None):
 
     return ax
 
-def classified_extremes_summary_grouped(classified_extremes, group_metric='_benchmark_id', ax=None):
+def classified_extremes_summary_grouped(classified_extremes, group_metric='_benchmark_id', normalized=True, ax=None):
     """Show summary of classified extreme values via stacked bars
     
     Args:
         classified_extremes (dict): output of `classify_extreme_measurements`
         group_metric (str): metric by which each summary metric should be broken
             down
+        normalized (bool): normalize metric counts by the number of observations
+            that included that metric
+ 
         
     Returns:
         matplotlib.Axes
@@ -544,6 +547,16 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
             continue
         y_values = numpy.array([_filtered_df[x].sum() for x in x_labels])
 
+        if normalized:
+            for index, x_label in enumerate(x_labels):
+                denom = classified_extremes['per_metric'].get('_tot_' + x_label)
+                if denom is None:
+                    if x_label == '_loci_unclassified':
+                        denom = classified_extremes['totals']['total']
+                    else:
+                        raise KeyError("metric %s has no corresponding normalization factor" % x_label)
+                y_values[index] = 100.0 * y_values[index] / denom
+
         # note that this only does fancy labeling for group_metric = '_benchmark_id'
         ax.bar(x=x_values,
                height=y_values,
@@ -552,23 +565,32 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
                label=abcutils.CONFIG['benchmark_labels_short'].get(_benchmark_id, _benchmark_id))
         y_bottom += y_values
 
+    if normalized:
+        ax.set_ylim(0, 100.0)
+        ax.set_ylabel("Percent of tests")
+        annotate_code = "%d%%"
+    else:
+        ax.set_ylabel("Number of occurrences")
+        annotate_code = "%d"
+
+
     ax.yaxis.grid(True)        
     ax.set_xticks(x_values)
     ax.set_xticklabels([abcutils.CONFIG['metric_labels'].get(x, x) for x in x_labels], rotation=30, ha='right')
-    ax.set_ylabel("Number of occurrences")
-    ax.set_title("Candidate Contributors to Bad Performance (%d Jobs Total)" % classified_extremes['totals']['total'])
     ax.legend(bbox_to_anchor=(1.0, 1.00))
 
     for index, x_value in enumerate(x_values):
-        ax.annotate("%d" % y_bottom[index], xy=(x_value, y_bottom[index]), ha='center')
+        ax.annotate(annotate_code % y_bottom[index], xy=(x_value, y_bottom[index]), ha='center')
 
     return ax
 
-def classified_extremes_summary(classified_extremes, ax=None):
+def classified_extremes_summary(classified_extremes, normalized=True, ax=None):
     """Show summary of classified extreme values in bar chart
     
     Args:
         classified_extremes (dict): output of `classify_extreme_measurements`
+        normalized (bool): normalize metric counts by the number of observations
+            that included that metric
         
     Returns:
         matplotlib.Axes
@@ -579,17 +601,37 @@ def classified_extremes_summary(classified_extremes, ax=None):
         fig, ax = matplotlib.pyplot.subplots()
         fig.set_size_inches(16,4)
 
-    x_labels = list(reversed(sorted(classified_extremes['per_metric'].keys(), key=lambda x: classified_extremes['per_metric'][x])))
+    # filter out underscore keys *except* number of unclassifieds
+    x_labels = [x for x in classified_extremes['per_metric'].keys() if (not x.startswith('_') or x == '_loci_unclassified')]
+
+    # sort by the highest contributors
+    x_labels = list(reversed(sorted(x_labels, key=lambda x: classified_extremes['per_metric'][x])))
+
     y_values = [classified_extremes['per_metric'][x] for x in x_labels]
+    if normalized:
+        for index, x_label in enumerate(x_labels):
+            denom = classified_extremes['per_metric'].get('_tot_' + x_label)
+            if denom is None:
+                if x_label == '_loci_unclassified':
+                    denom = classified_extremes['totals']['total']
+                else:
+                    raise KeyError("metric %s has no corresponding normalization factor" % x_label)
+            y_values[index] = 100.0 * y_values[index] / denom
+
+        ax.set_ylim(0, 100.0)
+        ax.set_ylabel("Percent of tests")
+        annotate_code = "%d%%"
+    else:
+        ax.set_ylabel("Number of occurrences")
+        annotate_code = "%d"
+
     x_values = numpy.arange(len(y_values))
     ax.yaxis.grid(True)
     ax.bar(x_values, y_values)
     ax.set_xticks(x_values)
     ax.set_xticklabels([abcutils.CONFIG['metric_labels'].get(x, x) for x in x_labels], rotation=45, ha='right')
-    ax.set_ylabel("Number of occurrences")
-    ax.set_title("Candidate Contributors to Good Performance (%d Jobs Total)" % classified_extremes['totals']['total'])
 
     for index, x_value in enumerate(x_values):
-        ax.annotate("%d" % y_values[index], xy=(x_value, y_values[index]), ha='center')
+        ax.annotate(annotate_code % y_values[index], xy=(x_value, y_values[index] * 1.05), ha='center')
 
     return ax
