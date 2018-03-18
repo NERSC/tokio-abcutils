@@ -1,4 +1,6 @@
 *.pyc
 .ipynb_checkpoints
+cache.hdf5
 results
 summaries
+figs
