@@ -45,8 +45,8 @@ process() {
                                                     --ost \
                                                     --json \
                                                     $darshanlog > $json_output
-        else
-            echo "$json_output already exists with size $(stat --format=%s $json_output); skipping"
+#       else
+#           echo "$json_output already exists with size $(stat --format=%s $json_output); skipping"
         fi
     done
 }
