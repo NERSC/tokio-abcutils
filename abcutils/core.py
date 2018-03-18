@@ -79,13 +79,22 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     dataframe['darshan_app'] = [os.path.basename(x) for x in dataframe['darshan_app']]
 
     # Calculate coverage factors
-    dataframe['coverage_factor_read_bw'] = (dataframe['darshan_biggest_read_fs_bytes'] / dataframe['fs_tot_bytes_read']).replace([numpy.inf, -numpy.inf], numpy.nan)
-    dataframe['coverage_factor_write_bw'] = (dataframe['darshan_biggest_write_fs_bytes'] / dataframe['fs_tot_bytes_written']).replace([numpy.inf, -numpy.inf], numpy.nan)
+    nans = pandas.Series(numpy.full(dataframe['darshan_app'].shape, numpy.nan), index=dataframe.index)
+    dataframe['coverage_factor_read_bw'] = (dataframe['darshan_tot_bytes_read_posix'] / dataframe['fs_tot_bytes_read']).replace([numpy.inf, -numpy.inf], numpy.nan)
+    dataframe['coverage_factor_write_bw'] = (dataframe['darshan_tot_bytes_written_posix'] / dataframe['fs_tot_bytes_written']).replace([numpy.inf, -numpy.inf], numpy.nan)
     job_nodehrs = (dataframe['darshan_nprocs'] / abcutils.CONFIG['job_ppns'][system]) * dataframe['darshan_walltime'] / 3600
     if 'jobsdb_concurrent_nodehrs' in dataframe.columns:
         dataframe['coverage_factor_nodehrs'] = (job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']).replace([numpy.inf, -numpy.inf], numpy.nan)
     dataframe['fs_tot_bytes'] = dataframe['fs_tot_bytes_read'] + dataframe['fs_tot_bytes_written']
-    dataframe['coverage_factor_bw'] = dataframe['darshan_total_gibs_posix'] / dataframe['fs_tot_bytes'] * 2.0**30
+    dataframe['fs_tot_ops'] = dataframe.get('fs_tot_read_ops', nans) + dataframe.get('fs_tot_write_ops', nans)
+
+    dataframe['coverage_factor_opens'] = (dataframe.get('darshan_tot_opens_posix', nans) / dataframe.get('fs_tot_open_ops', nans)).replace([numpy.inf, -numpy.inf], numpy.nan)
+    dataframe['coverage_factor_stats'] = (dataframe.get('darshan_tot_stats_posix', nans) / dataframe.get('fs_tot_getattr_ops', nans)).replace([numpy.inf, -numpy.inf], numpy.nan)
+    dataframe['coverage_factor_read_ops'] = (dataframe.get('darshan_tot_reads', nans) / dataframe.get('fs_tot_read_ops', nans)).replace([numpy.inf, -numpy.inf], numpy.nan)
+    dataframe['coverage_factor_write_ops'] = (dataframe.get('darshan_tot_writes', nans) / dataframe.get('fs_tot_write_ops', nans)).replace([numpy.inf, -numpy.inf], numpy.nan)
+
+    dataframe['coverage_factor_bw'] = ((dataframe['darshan_tot_bytes_read_posix'] + dataframe['darshan_tot_bytes_written_posix']) / dataframe['fs_tot_bytes']).replace([numpy.inf, -numpy.inf], numpy.nan)
+    dataframe['coverage_factor_ops'] = ((dataframe.get('darshan_tot_reads_posix', nans) + dataframe.get('darshan_tot_writes_posix', nans)) / dataframe.get('fs_tot_ops', nans)).replace([numpy.inf, -numpy.inf], numpy.nan)
 
     # Calculate the relevant metrics for counters that have both a read and
     # writen component; mostly for convenience.
