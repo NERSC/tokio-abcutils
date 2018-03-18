@@ -547,11 +547,7 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
     results_df = pandas.DataFrame.from_dict(classified_extremes['per_test'], orient='columns')
     grouped_df = results_df.groupby(by=group_metric)
 
-    # Sort metric order by its impact
     x_labels = [x for x in results_df.columns if (not x.startswith('_') or x == '_loci_unclassified')]
-    x_sums = list(enumerate([results_df[x].sum() for x in x_labels]))
-    new_metric_order = [xx[0] for xx in sorted(x_sums, key=lambda x:x[1], reverse=True)]
-    x_labels = [x_labels[i] for i in new_metric_order]
 
     # Create plot canvas
     if ax is None:
@@ -564,10 +560,11 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
     benchmark_ids = sorted(list(set([x[group_metric] for x in classified_extremes['per_test']])))
 
     x_values = numpy.arange(len(x_labels))
-    y_bottom = numpy.zeros(len(x_labels))
-    for _benchmark_id in benchmark_ids:
+    y_total = numpy.zeros(len(x_labels))
+    plot_bars = []
+    for benchmark_id in benchmark_ids:
         try:
-            _filtered_df = grouped_df.get_group((_benchmark_id))
+            _filtered_df = grouped_df.get_group((benchmark_id))
         except KeyError:
             continue
         y_values = numpy.array([_filtered_df[x].sum() for x in x_labels])
@@ -583,12 +580,9 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
                 y_values[index] = 100.0 * y_values[index] / denom
 
         # note that this only does fancy labeling for group_metric = '_benchmark_id'
-        ax.bar(x=x_values,
-               height=y_values,
-               bottom=y_bottom,
-               width=0.9,
-               label=abcutils.CONFIG['benchmark_labels_short'].get(_benchmark_id, _benchmark_id))
-        y_bottom += y_values
+        plot_bars.append((y_values.copy(), y_total.copy(), benchmark_id))
+
+        y_total += y_values
 
     if normalized:
         ax.set_ylim(0, 100.0)
@@ -598,6 +592,16 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
         ax.set_ylabel("Number of occurrences")
         annotate_code = "%d"
 
+    # Reorder bars by their total y value (y_total)
+    x_order = [xx[0] for xx in sorted(enumerate(y_total), key=lambda x: x[1], reverse=True)]
+    x_labels = [x_labels[i] for i in x_order]
+
+    for _y_values, _y_total, _benchmark_id in plot_bars:
+         ax.bar(x=x_values,
+               height=_y_values[x_order],
+               bottom=_y_total[x_order],
+               width=0.9,
+               label=abcutils.CONFIG['benchmark_labels_short'].get(_benchmark_id, _benchmark_id))
 
     ax.yaxis.grid(True)        
     ax.set_xticks(x_values)
@@ -605,7 +609,7 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
     ax.legend(bbox_to_anchor=(1.0, 1.00))
 
     for index, x_value in enumerate(x_values):
-        ax.annotate(annotate_code % y_bottom[index], xy=(x_value, y_bottom[index]), ha='center')
+        ax.annotate(annotate_code % y_total[x_order][index], xy=(x_value, y_total[x_order][index]), ha='center')
 
     return ax
 
@@ -629,10 +633,7 @@ def classified_extremes_summary(classified_extremes, normalized=True, ax=None):
     # filter out underscore keys *except* number of unclassifieds
     x_labels = [x for x in classified_extremes['per_metric'].keys() if (not x.startswith('_') or x == '_loci_unclassified')]
 
-    # sort by the highest contributors
-    x_labels = list(reversed(sorted(x_labels, key=lambda x: classified_extremes['per_metric'][x])))
-
-    y_values = [classified_extremes['per_metric'][x] for x in x_labels]
+    y_values = numpy.array([classified_extremes['per_metric'][x] for x in x_labels])
     if normalized:
         for index, x_label in enumerate(x_labels):
             denom = classified_extremes['per_metric'].get('_tot_' + x_label)
@@ -650,13 +651,17 @@ def classified_extremes_summary(classified_extremes, normalized=True, ax=None):
         ax.set_ylabel("Number of occurrences")
         annotate_code = "%d"
 
+    # sort by the highest contributors
+    x_order = [xx[0] for xx in sorted(enumerate(y_values), key=lambda x: x[1], reverse=True)]
+    x_labels = [x_labels[i] for i in x_order]
+
     x_values = numpy.arange(len(y_values))
     ax.yaxis.grid(True)
-    ax.bar(x_values, y_values)
+    ax.bar(x_values, y_values[x_order])
     ax.set_xticks(x_values)
     ax.set_xticklabels([abcutils.CONFIG['metric_labels'].get(x, x) for x in x_labels], rotation=45, ha='right')
 
     for index, x_value in enumerate(x_values):
-        ax.annotate(annotate_code % y_values[index], xy=(x_value, y_values[index] * 1.05), ha='center')
+        ax.annotate(annotate_code % y_values[x_order][index], xy=(x_value, y_values[x_order][index] * 1.05), ha='center')
 
     return ax
