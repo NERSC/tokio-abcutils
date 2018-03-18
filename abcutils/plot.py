@@ -609,7 +609,7 @@ def classified_extremes_summary_grouped(classified_extremes, group_metric='_benc
     ax.legend(bbox_to_anchor=(1.0, 1.00))
 
     for index, x_value in enumerate(x_values):
-        ax.annotate(annotate_code % y_total[x_order][index], xy=(x_value, y_total[x_order][index]), ha='center')
+        ax.annotate(annotate_code % y_total[x_order][index], xy=(x_value, y_total[x_order][index] * 1.05), ha='center')
 
     return ax
 
