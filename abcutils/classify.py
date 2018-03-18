@@ -1,4 +1,5 @@
 import numbers
+import operator
 import warnings
 import numpy
 import abcutils
@@ -21,44 +22,54 @@ def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good
         contains the 'error' key and a True value when `dependent_column` does
         not fall within the most extreme quartile.
     """
+    def cutoff_percentile(df_slice, percentile):
+        try:
+            return numpy.nanpercentile(df_slice, percentile)
+        except TypeError: # if passed non-numeric columns, just skip them
+            return None
+   
     contributors = []
     for column in dataframe.columns:
         big_is_good = abcutils.CONFIG['metric_big_is_good'].get(column, True)
+        region = dataframe[column].iloc[0:-1]
 
-        result = None
+        cutoff = None
+        compare = None
         # we want the value to be lower than the cutoff when either
         # (a) we're looking for bad, and big IS good, or
         # (b) we're looking for good, and big IS NOT good
         if (not want_good and big_is_good) or (want_good and not big_is_good):
-            try:
-                cutoff = numpy.nanpercentile(dataframe[column].iloc[0:-1], 25)
-            except TypeError: # if passed non-numeric columns, just skip them
-                continue
-            if dataframe[column].iloc[minima_iloc] < cutoff:
-                result = {
-                    'metric': column,
-                    'value': dataframe[column].iloc[minima_iloc],
-                    'comparator': "<",
-                    'cutoff': cutoff,
-                }
+            cutoff = cutoff_percentile(dataframe[column].iloc[0:-1], 25)
+            compare = operator.lt
+#           cutoff = region.min()
+#           compare = operator.eq
         # we want the value to be higher than the cutoff when either
         # (a) we're looking for good, and big IS good
         # (b) we're looking for bad, and big IS NOT good
         elif (want_good and big_is_good) or (not want_good and not big_is_good):
-            try:
-                cutoff = numpy.nanpercentile(dataframe[column].iloc[0:-1], 75)
-            except TypeError:
-                continue
-            if dataframe[column].iloc[minima_iloc] > cutoff:
-                result = {
-                    'metric': column,
-                    'value': dataframe[column].iloc[minima_iloc],
-                    'comparator': ">",
-                    'cutoff': cutoff,
-                }
+            cutoff = cutoff_percentile(dataframe[column].iloc[0:-1], 75)
+            compare = operator.gt
+#           cutoff = region.max()
+#           compare = operator.eq
+
+        if cutoff is None:
+            continue
+
+        # comparing equality when all values are identical results in spurious matches
+        unique = len(region.unique())
+        if compare(dataframe[column].iloc[minima_iloc], cutoff) and unique > 1:
+            result = {
+                'metric': column,
+                'value': dataframe[column].iloc[minima_iloc],
+                'cutoff': cutoff,
+            }
+        else:
+            result = None
 
         if column == dependent_column:
-            if result is None and minima_iloc is not None:
+            if result is None:
+                print column, dataframe[column].iloc[minima_iloc]
+                print region
                 warnings.warn("%s=%s (index %s) not in the %s quartile (%s) of %d values" %
                               (column,
                                dataframe[column].iloc[minima_iloc],
