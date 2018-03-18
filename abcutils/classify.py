@@ -4,7 +4,35 @@ import warnings
 import numpy
 import abcutils
 
-def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good=False):
+def _cutoff_percentile(dataframe, percentile):
+    """Safely calculate percentile of a dataframe; return None if non-numeric
+    """
+    try:
+        return numpy.nanpercentile(dataframe, percentile)
+    except TypeError: # if passed non-numeric columns, just skip them
+        return None
+
+DEFAULT_CLASSIFIER = 'percentile'
+CLASSIFIERS = {
+    'percentile': {
+        'compare_low': operator.lt,
+        'compare_high': operator.gt,
+        'cutoff_low': _cutoff_percentile,
+        'cutoff_low_args': [25],
+        'cutoff_high': _cutoff_percentile,
+        'cutoff_high_args': [75],
+    },
+    'minmax': {
+        'compare_low': operator.eq,
+        'compare_high': operator.eq,
+        'cutoff_low': numpy.min,
+        'cutoff_low_args': [],
+        'cutoff_high': numpy.max,
+        'cutoff_high_args': [],
+    }
+}
+
+def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good=False, classifier=DEFAULT_CLASSIFIER):
     """Identify secondary metrics that coincide with a good/bad primary metric
 
     Args:
@@ -12,45 +40,43 @@ def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good
             over a series of measurements
         dependent_column (str): name of column in `dataframe` corresponding
             to the metric to which contributors will be identified
-        want_good (bool): are we identifying metrics that are unusually good
-            (True) or unusually bad (False)?
         minima_iloc (int): iloc of `dataframe` that is the expected local
             minima; default of -1 selects the final value in the dataframe
+        want_good (bool): are we identifying metrics that are unusually good
+            (True) or unusually bad (False)?
+        classifier (str): name of classifier technique to use; corresponds to
+            keys in abcutils.classify.CLASSIFIERS
     Returns:
         List of dicts, where each dicts corresponds to a single metric that
         was identified as meeting the contribution criteria.  A dict
         contains the 'error' key and a True value when `dependent_column` does
         not fall within the most extreme quartile.
     """
-    def cutoff_percentile(df_slice, percentile):
-        try:
-            return numpy.nanpercentile(df_slice, percentile)
-        except TypeError: # if passed non-numeric columns, just skip them
-            return None
-   
+    if classifier not in CLASSIFIERS:
+        raise KeyError("invalid classifier")
+    else:
+        method = CLASSIFIERS[classifier]
+  
     contributors = []
     for column in dataframe.columns:
         big_is_good = abcutils.CONFIG['metric_big_is_good'].get(column, True)
-        region = dataframe[column].iloc[0:-1]
+        region = dataframe[column]#.iloc[0:-1]
 
-        cutoff = None
-        compare = None
         # we want the value to be lower than the cutoff when either
-        # (a) we're looking for bad, and big IS good, or
-        # (b) we're looking for good, and big IS NOT good
+        #   (a) we're looking for bad, and big IS good, or
+        #   (b) we're looking for good, and big IS NOT good
         if (not want_good and big_is_good) or (want_good and not big_is_good):
-            cutoff = cutoff_percentile(dataframe[column].iloc[0:-1], 25)
-            compare = operator.lt
-#           cutoff = region.min()
-#           compare = operator.eq
+            cutoff = method['cutoff_low'](region, *(method['cutoff_low_args']))
+            compare = method['compare_low']
         # we want the value to be higher than the cutoff when either
-        # (a) we're looking for good, and big IS good
-        # (b) we're looking for bad, and big IS NOT good
+        #   (a) we're looking for good, and big IS good
+        #   (b) we're looking for bad, and big IS NOT good
         elif (want_good and big_is_good) or (not want_good and not big_is_good):
-            cutoff = cutoff_percentile(dataframe[column].iloc[0:-1], 75)
-            compare = operator.gt
-#           cutoff = region.max()
-#           compare = operator.eq
+            cutoff = method['cutoff_high'](region, *(method['cutoff_high_args']))
+            compare = method['compare_high']
+        else:
+            cutoff = None
+            compare = None
 
         if cutoff is None:
             continue
@@ -68,8 +94,6 @@ def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good
 
         if column == dependent_column:
             if result is None:
-                print column, dataframe[column].iloc[minima_iloc]
-                print region
                 warnings.warn("%s=%s (index %s) not in the %s quartile (%s) of %d values" %
                               (column,
                                dataframe[column].iloc[minima_iloc],
@@ -83,7 +107,7 @@ def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good
 
     return contributors
 
-def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False):
+def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False, classifier=DEFAULT_CLASSIFIER):
     """Count the secondary metrics that may have contributed to good/bad primary metric
 
     Args:
@@ -101,6 +125,8 @@ def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False
             counted
         want_good (bool): are we identifying metrics that are unusually good
             (True) or unusually bad (False)?
+        classifier (str): name of classifier technique to use; corresponds to
+            keys in abcutils.classify.CLASSIFIERS
 
     Returns:
         Dict keyed by the columns of `dataframe` and whose values are the number
@@ -131,7 +157,8 @@ def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False
             contributors = identify_contributors(region_df,
                                                  plot_metric,
                                                  minima_iloc=minima_iloc,
-                                                 want_good=want_good)
+                                                 want_good=want_good,
+                                                 classifier=classifier)
 
             for metric, count in region_df.count().iteritems():
                 if count > 0:
@@ -154,7 +181,8 @@ def classify_extreme_measurements(dataframe,
                                   secondary_metrics,
                                   want_good,
                                   test_platforms=None,
-                                  benchmark_ids=None):
+                                  benchmark_ids=None,
+                                  classifier=DEFAULT_CLASSIFIER):
     """Classify the sources of extreme performance
 
     Args:
@@ -169,6 +197,8 @@ def classify_extreme_measurements(dataframe,
             (default: all)
         benchmark_ids (list of str): list of benchmarks to subselect
             (default: all)
+        classifier (str): name of classifier technique to use; corresponds to
+            keys in abcutils.classify.CLASSIFIERS
 
     Returns:
         dict with the following keys:
@@ -201,7 +231,8 @@ def classify_extreme_measurements(dataframe,
                                         plot_metric=plot_metric,
                                         loci=loci,
                                         min_points=abcutils.features.MIN_REGION,
-                                        want_good=want_good)
+                                        want_good=want_good,
+                                        classifier=classifier)
             result['_test_platform'] = _test_platform
             result['_benchmark_id'] = _benchmark_id
             results.append(result)
