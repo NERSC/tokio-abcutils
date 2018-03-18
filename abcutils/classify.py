@@ -189,7 +189,7 @@ def classify_extreme_measurements(dataframe,
             result = count_contributors(dataframe=_filtered_df[['_datetime_start'] + secondary_metrics],
                                         plot_metric=plot_metric,
                                         loci=loci,
-                                        min_points=abcutils.features.SHORT_WINDOW,
+                                        min_points=abcutils.features.MIN_REGION,
                                         want_good=want_good)
             result['_test_platform'] = _test_platform
             result['_benchmark_id'] = _benchmark_id

@@ -4,8 +4,10 @@ import pandas
 import scipy.stats
 import abcutils
 
-SHORT_WINDOW = 7
-LONG_WINDOW = 28
+SHORT_WINDOW = pandas.Timedelta(days=7)
+LONG_WINDOW = pandas.Timedelta(days=28)
+# minimum number of data points in a valid region
+MIN_REGION = 7
 
 class Streak(object):
     """
@@ -170,8 +172,11 @@ def sliding_window_slopes(dataframe, column, start, end, width, delta):
 
     return result
 
-def calculate_sma(dataframe, x_column, y_column, window, **kwargs):
+def sma_by_row(dataframe, x_column, y_column, window, **kwargs):
     """Calculate the simple moving average for a column of a dataset
+
+    Calculates the SMA using a window that is expressed in number of rows rather
+    than the units of measurement contained in those rows.
 
     Args:
         dataframe (pandas.DataFrame): dataframe from which sliding window slopes
@@ -198,7 +203,69 @@ def calculate_sma(dataframe, x_column, y_column, window, **kwargs):
 
     return filtered_series.rolling(window=window, **kwargs).mean().sort_index()
 
-def sma_intercepts(dataframe, column, short_window, long_window):
+def sma_by_value(dataframe, x_column, y_column, window, **kwargs):
+    """Calculate the simple moving average for a column of a dataset
+
+    Calculates the SMA using a window that is expressed in the units of
+    measurement contained in those rows rather than the number of rows.
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
+            should be calculated
+        x_column (str): name of column to treat as x values when calculating
+            the simple moving average
+        y_column (str): name of column over which simple moving average should
+            be calculated
+        window: width of the window, expressed in the units of y_column, over
+            which the SMA will be calculated
+
+    Returns:
+        Series of simple moving averages indexed by x_column
+    """
+
+    half_window = window / 2.0
+    indices = []
+    values = []
+    for index, start, _ in dataframe[[x_column, y_column]].itertuples():
+        window_start = start - half_window
+        window_end = start + half_window
+        window_df = dataframe[dataframe[x_column] >= window_start]
+        window_df = window_df[window_df[x_column] < window_end]
+        indices.append(window_df.loc[index][x_column])
+        values.append(window_df[y_column].mean())
+
+    return pandas.Series(values, index=indices, name=y_column).sort_index()
+
+def calculate_sma(dataframe, x_column, y_column, window, method='value', **kwargs):
+    """Calculate the simple moving average for a column of a dataset
+
+    Dispatches an SMA calculation function
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
+            should be calculated
+        x_column (str): name of column to treat as x values when calculating
+            the simple moving average
+        y_column (str): name of column over which simple moving average should
+            be calculated
+        window: width of the window over which the SMA will be calculated
+        method (str): 'value' or 'row'
+        kwargs: parameters to pass to SMA calculator
+
+    Returns:
+        Series of simple moving averages indexed by x_column
+    """
+    methods = {
+        'value': sma_by_value,
+        'row': sma_by_row,
+    }
+    method = methods.get(method)
+    if not method:
+        raise KeyError("Invalid method (%s)" % ', '.join(methods.keys()))
+
+    return method(dataframe=dataframe, x_column=x_column, y_column=y_column, window=window, **kwargs)
+
+def sma_intercepts(dataframe, column, short_window, long_window, **kwargs):
     """Identify places where two simple moving averages intercept
 
     Args:
@@ -210,14 +277,15 @@ def sma_intercepts(dataframe, column, short_window, long_window):
             the short window
         long_window (int): number of consecutive dataframe rows to include in
             the long window
+        kwargs: arguments to be passed to calculate_sma()
 
     Returns:
         DataFrame with indices corresponding to dataframe
     """
     x_column = '_datetime_start'
 
-    sma_short = calculate_sma(dataframe, x_column, column, window=short_window)
-    sma_long = calculate_sma(dataframe, x_column, column, window=long_window)
+    sma_short = calculate_sma(dataframe, x_column, column, window=short_window, **kwargs)
+    sma_long = calculate_sma(dataframe, x_column, column, window=long_window, **kwargs)
 
     results = {
         x_column: [],
@@ -310,8 +378,18 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
 
     return pandas.DataFrame(results).set_index('index')
 
-def generate_loci_sma(dataframe, plot_metric, mins, maxes, **kwargs):
-    """
+def generate_loci_sma(dataframe, column, mins, maxes, **kwargs):
+    """Identify min and max values using simple moving average
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which loci should be
+            identified
+        column (str): name of column over in dataframe from which sliding-window
+            slopes should be calculated 
+        mins (bool): True if minima should be identified in each region
+        maxes (bool): True if maxima should be identified in each region
+        kwargs: arguments to be passed to abcutils.features.sma_local_minmax()
+
     Returns:
         pandas.DataFrame indexed as `dataframe` with columns
          * `_datetime_start`, Timestamp values corresponding to each locus
@@ -321,7 +399,7 @@ def generate_loci_sma(dataframe, plot_metric, mins, maxes, **kwargs):
     args = {
         'short_window': SHORT_WINDOW,
         'long_window': LONG_WINDOW,
-        'min_domain': SHORT_WINDOW,
+        'min_domain': MIN_REGION,
     }
     args.update(kwargs)
 
@@ -330,19 +408,30 @@ def generate_loci_sma(dataframe, plot_metric, mins, maxes, **kwargs):
     if mins:
         min_vals = abcutils.features.sma_local_minmax(
             dataframe=dataframe,
-            column=plot_metric,
+            column=column,
             max_func=pandas.Series.idxmin,
             **args)
     if maxes:
         max_vals = abcutils.features.sma_local_minmax(
             dataframe=dataframe,
-            column=plot_metric,
+            column=column,
             min_func=pandas.Series.idxmax,
             **args)
     return pandas.concat((min_vals, max_vals)).sort_values('_datetime_start')
 
-def generate_loci_peakdetect(dataframe, plot_metric, mins, maxes, **kwargs):
-    """
+def generate_loci_peakdetect(dataframe, column, mins, maxes, **kwargs):
+    """Identify min and max values using peakdetect() method
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which loci should be
+            identified
+        column (str): name of column over in dataframe from which sliding-window
+            slopes should be calculated 
+        mins (bool): True if minima should be identified in each region
+        maxes (bool): True if maxima should be identified in each region
+        kwargs: arguments to be passed to abcutils.features.sma_local_minmax()
+
+
     Returns:
         pandas.Series indexed as `dataframe`, named `_datetime_start`,
         and containing `_datetime_start` values corresponding to loci.
@@ -352,7 +441,7 @@ def generate_loci_peakdetect(dataframe, plot_metric, mins, maxes, **kwargs):
     }
     args.update(kwargs)
 
-    highs, lows = peakdetect.peakdetect(dataframe[plot_metric].sort_index(ascending=False),
+    highs, lows = peakdetect.peakdetect(dataframe[column].sort_index(ascending=False),
                                                  dataframe.sort_index(ascending=False).index,
                                                  **args)
     min_vals = None
