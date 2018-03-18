@@ -84,11 +84,12 @@ def load_and_synthesize_csv(csv_file, system="edison"):
     job_nodehrs = (dataframe['darshan_nprocs'] / abcutils.CONFIG['job_ppns'][system]) * dataframe['darshan_walltime'] / 3600
     if 'jobsdb_concurrent_nodehrs' in dataframe.columns:
         dataframe['coverage_factor_nodehrs'] = (job_nodehrs / dataframe['jobsdb_concurrent_nodehrs']).replace([numpy.inf, -numpy.inf], numpy.nan)
+    dataframe['fs_tot_bytes'] = dataframe['fs_tot_bytes_read'] + dataframe['fs_tot_bytes_written']
+    dataframe['coverage_factor_bw'] = dataframe['darshan_total_gibs_posix'] / dataframe['fs_tot_bytes'] * 2.0**30
 
     # Calculate the relevant metrics for counters that have both a read and
     # writen component; mostly for convenience.
-    for key in ('coverage_factor_%s_bw',
-                'darshan_fpp_%s_job?',
+    for key in ('darshan_fpp_%s_job?',
                 'darshan_biggest_%s_api_bytes'):
         new_key = key.replace('%s_', '')
         dataframe[new_key] = [dataframe.iloc[i][key % x] for i, x in enumerate(dataframe['darshan_read_or_write_job'])]
