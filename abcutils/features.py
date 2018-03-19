@@ -319,6 +319,58 @@ def sma_intercepts(dataframe, column, short_window, long_window, min_width=None,
 
     return result_df[keep]
 
+def sma_centroids(dataframe, column, short_window, long_window, min_width=None, **kwargs):
+    """Identify centermost point between two SMA interception points
+
+    Define regions as being bounded by two consecutive interceptions of SMAs
+    with different window widths, then choose the centermost data point within
+    that region.  Useful for defining regions that capture the crossover of
+    SMAs.
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
+            should be calculated
+        column (str): name of column over in dataframe from which sliding-window
+            slopes should be calculated 
+        short_window (int): number of consecutive dataframe rows to include in
+            the short window
+        long_window (int): number of consecutive dataframe rows to include in
+            the long window
+        min_width: minimum width, expressed in units of `x_column`, below which
+            an intercept should be disregarded as a valid end of a window
+        kwargs: arguments to be passed to calculate_sma()
+
+    Returns:
+        DataFrame with indices corresponding to dataframe
+    """
+    x_column = '_datetime_start'
+
+    intercepts = sma_intercepts(dataframe, column, short_window, long_window, min_width=min_width, **kwargs)
+
+    results = {
+        x_column: [],
+        'positive': [],
+    }
+
+    prev_index = None
+    for index in intercepts.index:
+        if prev_index is not None:
+            region_idx0 = dataframe.index.get_loc(prev_index)
+            region_idxf = dataframe.index.get_loc(index)
+            region = dataframe.iloc[region_idx0:region_idxf][x_column]
+            halfway_val = region.iloc[0] + (region.iloc[-1] - region.iloc[0]) / 2.0
+            closest_val = (dataframe[x_column] - halfway_val).abs()
+            closest_index = closest_val[closest_val == closest_val.min()].index[0]
+            results[x_column].append(dataframe.loc[closest_index][x_column])
+            results['positive'].append(intercepts.loc[index]['positive'])
+        prev_index = index
+
+    # Now convert sma index values to dataframe.index values
+    x_series = dataframe[x_column]
+    results['index'] = [x_series[x_series == x].index[0] for x in results[x_column]]
+
+    return pandas.DataFrame(results).set_index('index') 
+
 def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
                      min_func=pandas.Series.idxmin,
                      max_func=pandas.Series.idxmax):
