@@ -440,7 +440,7 @@ def clustered_correlation_bars(dataframes, plot_metrics, column_key=None, width=
 
     return ax
 
-def sma_overlaps(dataframe, plot_metric, short_window, long_window, ax=None, **kwargs):
+def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None, sma_intercepts=None, ax=None, **kwargs):
     """Plot the raw data and region boundaries of a time series
     
     Args:
@@ -448,12 +448,16 @@ def sma_overlaps(dataframe, plot_metric, short_window, long_window, ax=None, **k
         plot_metric (str): column name corresponding to metric of interest in `dataframe`
         short_window: (int): size of the smaller simple moving average window
         long_window: (int): size of the larger simple moving average window
+        sma_intercepts (pandas.DataFrame): output of 
+            abcutils.features.sma_intercepts; if none is provided, calculate it
+            using `short_window` and `long_window`
         kwargs: arguments to be passed to abcutils.features.sma_intercepts()
         
     Returns:
         matplotlib.Axes corresponding to drawn plot
     """
-    x_raw = dataframe['_datetime_start'].apply(lambda x: time.mktime(x.timetuple()))
+    x_raw = dataframe['_datetime_start'].apply(lambda x: long(time.mktime(x.timetuple()) / 86400) * 86400 )
+#   x_raw = dataframe['_datetime_start'].apply(lambda x: time.mktime(x.timetuple()))
     y_raw = dataframe[plot_metric]
 
     if ax:
@@ -470,7 +474,8 @@ def sma_overlaps(dataframe, plot_metric, short_window, long_window, ax=None, **k
     ax.set_xticklabels([datetime.datetime.fromtimestamp(x).strftime("%b %d") for x in ax.get_xticks()])
 
     ### plot the intercept points demarcating different regions
-    sma_intercepts = abcutils.features.sma_intercepts(dataframe, plot_metric, short_window, long_window, **kwargs)
+    if sma_intercepts is None:
+        sma_intercepts = abcutils.features.sma_intercepts(dataframe, plot_metric, short_window, long_window, **kwargs)
     left_x = None
     min_y, max_y = ax.get_ylim()
     for row in sma_intercepts.itertuples():
@@ -483,19 +488,22 @@ def sma_overlaps(dataframe, plot_metric, short_window, long_window, ax=None, **k
                          height=(max_y - min_y),
                          color='black',
                          linewidth=0,
-                         alpha=0.10))
+                         alpha=0.10,
+                         zorder=0))
             left_x = None
 
     ### also calculate and plot the SMAs
-    sma_short = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, short_window, **kwargs)
-    x_sma_short = [abcutils.core.pd2epoch(x) for x in sma_short.index]
-    y_sma_short = sma_short.values
-    ax.plot(x_sma_short, y_sma_short, color='C1', linewidth=2)
+    if short_window:
+        sma_short = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, short_window, **kwargs)
+        x_sma_short = [abcutils.core.pd2epoch(x) for x in sma_short.index]
+        y_sma_short = sma_short.values
+        ax.plot(x_sma_short, y_sma_short, color='C1', linewidth=2)
 
-    sma_long = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, long_window, **kwargs)
-    x_sma_long = [abcutils.core.pd2epoch(x) for x in sma_long.index]
-    y_sma_long = sma_long.values
-    ax.plot(x_sma_long, y_sma_long, color='C2', linewidth=2)
+    if long_window:
+        sma_long = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, long_window, **kwargs)
+        x_sma_long = [abcutils.core.pd2epoch(x) for x in sma_long.index]
+        y_sma_long = sma_long.values
+        ax.plot(x_sma_long, y_sma_long, color='C2', linewidth=2)
 
     return ax
 
