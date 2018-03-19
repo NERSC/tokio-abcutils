@@ -292,6 +292,8 @@ def sma_intercepts(dataframe, column, short_window, long_window, min_width=None,
     results = {
         x_column: [],
         'positive': [],
+        'sma_short': [],
+        'sma_long': [],
     }
 
     # Walk through both SMAs and find intercepts
@@ -303,12 +305,15 @@ def sma_intercepts(dataframe, column, short_window, long_window, min_width=None,
         if above_now != above:
             results[x_column].append(sma_short.index[index])
             results['positive'].append(not above)
+            results['sma_short'].append(value)
+            results['sma_long'].append(sma_long[index])
         above = above_now
 
     # Now convert sma index values to dataframe.index values
     x_series = dataframe[x_column]
     results['index'] = [x_series[x_series == x].index[0] for x in results[x_column]]
 
+    # Remove regions that are below min_width
     result_df = pandas.DataFrame(results).set_index('index') 
     keep = [True] * len(result_df)
     if min_width is not None:
@@ -346,10 +351,14 @@ def sma_centroids(dataframe, column, short_window, long_window, min_width=None, 
     x_column = '_datetime_start'
 
     intercepts = sma_intercepts(dataframe, column, short_window, long_window, min_width=min_width, **kwargs)
+    sma_short = calculate_sma(dataframe, x_column, column, window=short_window, **kwargs)
+    sma_long = calculate_sma(dataframe, x_column, column, window=long_window, **kwargs)
 
     results = {
         x_column: [],
         'positive': [],
+        'sma_short': [],
+        'sma_long': [],
     }
 
     prev_index = None
@@ -358,11 +367,16 @@ def sma_centroids(dataframe, column, short_window, long_window, min_width=None, 
             region_idx0 = dataframe.index.get_loc(prev_index)
             region_idxf = dataframe.index.get_loc(index)
             region = dataframe.iloc[region_idx0:region_idxf][x_column]
+            if len(region) < 3: # can find a centroid without three points
+                continue
             halfway_val = region.iloc[0] + (region.iloc[-1] - region.iloc[0]) / 2.0
             closest_val = (dataframe[x_column] - halfway_val).abs()
             closest_index = closest_val[closest_val == closest_val.min()].index[0]
+            closest_iloc = dataframe.index.get_loc(closest_index)
             results[x_column].append(dataframe.loc[closest_index][x_column])
             results['positive'].append(intercepts.loc[index]['positive'])
+            results['sma_short'].append(sma_short.iloc[closest_iloc])
+            results['sma_long'].append(sma_long.iloc[closest_iloc])
         prev_index = index
 
     # Now convert sma index values to dataframe.index values
