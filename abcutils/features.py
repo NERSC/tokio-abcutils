@@ -388,6 +388,28 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
 
     return pandas.DataFrame(results).set_index('index')
 
+def intercepts_to_region(dataframe, intercepts, min_domain=None):
+    """Generate regions from a dataframe and sma_intercepts
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe from which regions should be
+            generated
+        intercepts (pandas.DataFrame or pandas.Series): object with same index
+            as `dataframe` whose index values denote intercepts.  Typically the
+            output of `sma_intercepts()` is used here.
+        min_domain (int): ignore local minima calculated from sets of rows with
+            fewer than `min_domain` rows
+    """
+    prev_index = None
+    for index in intercepts.index:
+        if prev_index is not None:
+            region_idx0 = dataframe.index.get_loc(prev_index)
+            region_idxf = dataframe.index.get_loc(index)
+            region = dataframe.iloc[region_idx0:region_idxf]
+            if (not min_domain) or (len(region) >= min_domain):
+                yield region
+        prev_index = index
+
 def generate_loci_sma(dataframe, column, mins, maxes, **kwargs):
     """Identify min and max values using simple moving average
 
