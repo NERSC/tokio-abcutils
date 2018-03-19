@@ -265,7 +265,7 @@ def calculate_sma(dataframe, x_column, y_column, window, method='value', **kwarg
 
     return method(dataframe=dataframe, x_column=x_column, y_column=y_column, window=window, **kwargs)
 
-def sma_intercepts(dataframe, column, short_window, long_window, **kwargs):
+def sma_intercepts(dataframe, column, short_window, long_window, min_width=None, **kwargs):
     """Identify places where two simple moving averages intercept
 
     Args:
@@ -277,6 +277,8 @@ def sma_intercepts(dataframe, column, short_window, long_window, **kwargs):
             the short window
         long_window (int): number of consecutive dataframe rows to include in
             the long window
+        min_width: minimum width, expressed in units of `x_column`, below which
+            an intercept should be disregarded as a valid end of a window
         kwargs: arguments to be passed to calculate_sma()
 
     Returns:
@@ -307,7 +309,15 @@ def sma_intercepts(dataframe, column, short_window, long_window, **kwargs):
     x_series = dataframe[x_column]
     results['index'] = [x_series[x_series == x].index[0] for x in results[x_column]]
 
-    return pandas.DataFrame(results).set_index('index')
+    result_df = pandas.DataFrame(results).set_index('index') 
+    keep = [True] * len(result_df)
+    if min_width is not None:
+        for iloc in range(len(result_df)):
+            if iloc > 0:
+                region_width = result_df.iloc[iloc][x_column] - result_df.iloc[iloc - 1][x_column]
+                keep[iloc] = (region_width >= min_width)
+
+    return result_df[keep]
 
 def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
                      min_func=pandas.Series.idxmin,
