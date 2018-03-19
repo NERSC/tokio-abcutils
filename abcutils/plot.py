@@ -341,7 +341,7 @@ def timeseries_streaks(dataframe, streaks, ax=None, **kwargs):
 
     return timeseries_manylines(lines, colorfunc, ax, **kwargs)
 
-def generate_umami(dataframe, plot_metrics, highlight_index=-1):
+def generate_umami(dataframe, plot_metrics, highlight_index=-1, show_empty=False, show_invariant=False):
     """
     Generate a full UMAMI diagram based on an input dataframe and a list of
     column names.  Relies on abcutil.CONFIG to create labels and determine if
@@ -349,6 +349,17 @@ def generate_umami(dataframe, plot_metrics, highlight_index=-1):
     """
     umami = tokio.tools.umami.Umami()
     for metric in plot_metrics:
+        try:
+            num_nans = sum(numpy.isnan(dataframe[metric]))
+        except TypeError:
+            num_nans = 0
+
+        if (len(dataframe[metric].unique()) == 1) and (not show_invariant):
+            continue
+
+        if (len(dataframe[metric]) == num_nans) and (not show_empty):
+            continue
+
         label = abcutils.CONFIG['metric_labels'].get(metric, metric)
         big_is_good = abcutils.CONFIG['metric_big_is_good'].get(metric, True)
         umami[metric] = tokio.tools.umami.UmamiMetric(
