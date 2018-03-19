@@ -532,7 +532,7 @@ def locus_summary(dataframe, plot_metric, loci, ax=None, **kwargs):
     """
 
     y_low = dataframe.loc[loci.index][plot_metric]
-    x_low = [abcutils.core.pd2epoch(x) for x in loci['_datetime_start']]
+    x_low = [long(abcutils.core.pd2epoch(x) / 86400) * 86400 for x in loci['_datetime_start']]
 
     if ax:
         fig = ax.get_figure()
@@ -684,3 +684,23 @@ def classified_extremes_summary(classified_extremes, normalized=True, ax=None):
         ax.annotate(annotate_code % y_values[x_order][index], xy=(x_value, y_values[x_order][index] * 1.05), ha='center')
 
     return ax
+
+def fix_xticks_timeseries(ax, criteria=(lambda x: x.day == 1)):
+    """Set x tick markers of a time series plot
+    
+    Args:
+        ax (matplotlib.Axes): plot axes to modify
+        criteria (function): function to determine when a tick label should be
+            drawn; its only argument should be an epoch timestamp (e.g., a value
+            on the x axis)
+    """
+    xticks = []
+    x_now, x_high = ax.get_xlim()
+    while x_now < x_high:
+        if criteria(datetime.datetime.fromtimestamp(x_now)): # include first of each month
+            xticks.append(x_now)
+        x_now += datetime.timedelta(days=1).total_seconds()
+    xticklabels = [datetime.datetime.fromtimestamp(x).strftime("%b %d, %Y") for x in xticks]
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xticklabels, rotation=30, ha='right')
+    ax.set_yticks(ax.get_yticks()[0:])
