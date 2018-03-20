@@ -175,8 +175,8 @@ def sliding_window_slopes(dataframe, column, start, end, width, delta):
 def sma_by_row(dataframe, x_column, y_column, window, **kwargs):
     """Calculate the simple moving average for a column of a dataset
 
-    Calculates the SMA using a window that is expressed in number of rows rather
-    than the units of measurement contained in those rows.
+    Calculates the SMA using a window that is expressed in number of **rows**
+    rather than the units of measurement contained in those rows.
 
     Args:
         dataframe (pandas.DataFrame): dataframe from which sliding window slopes
@@ -206,8 +206,8 @@ def sma_by_row(dataframe, x_column, y_column, window, **kwargs):
 def sma_by_value(dataframe, x_column, y_column, window, **kwargs):
     """Calculate the simple moving average for a column of a dataset
 
-    Calculates the SMA using a window that is expressed in the units of
-    measurement contained in those rows rather than the number of rows.
+    Calculates the SMA using a window that is expressed in the **units of
+    measurement contained in those rows** rather than the number of rows.
 
     Args:
         dataframe (pandas.DataFrame): dataframe from which sliding window slopes
@@ -289,32 +289,9 @@ def sma_intercepts(dataframe, column, short_window, long_window, min_width=None,
     sma_short = calculate_sma(dataframe, x_column, column, window=short_window, **kwargs)
     sma_long = calculate_sma(dataframe, x_column, column, window=long_window, **kwargs)
 
-    results = {
-        x_column: [],
-        'positive': [],
-        'sma_short': [],
-        'sma_long': [],
-    }
-
-    # Walk through both SMAs and find intercepts
-    above = None
-    for index, value in enumerate(sma_short):
-        if above is None:
-            above = value > sma_long[index]
-        above_now = value > sma_long[index]
-        if above_now != above:
-            results[x_column].append(sma_short.index[index])
-            results['positive'].append(not above)
-            results['sma_short'].append(value)
-            results['sma_long'].append(sma_long[index])
-        above = above_now
-
-    # Now convert sma index values to dataframe.index values
-    x_series = dataframe[x_column]
-    results['index'] = [x_series[x_series == x].index[0] for x in results[x_column]]
+    result_df = find_sma_intercepts(sma_short, sma_long, dataframe[x_column])
 
     # Remove regions that are below min_width
-    result_df = pandas.DataFrame(results).set_index('index') 
     keep = [True] * len(result_df)
     if min_width is not None:
         for iloc in range(len(result_df)):
@@ -350,9 +327,9 @@ def sma_centroids(dataframe, column, short_window, long_window, min_width=None, 
     """
     x_column = '_datetime_start'
 
-    intercepts = sma_intercepts(dataframe, column, short_window, long_window, min_width=min_width, **kwargs)
     sma_short = calculate_sma(dataframe, x_column, column, window=short_window, **kwargs)
     sma_long = calculate_sma(dataframe, x_column, column, window=long_window, **kwargs)
+    intercepts = find_sma_intercepts(sma_short, sma_long, dataframe[x_column])
 
     results = {
         x_column: [],
@@ -475,6 +452,58 @@ def intercepts_to_region(dataframe, intercepts, min_domain=None):
             if (not min_domain) or (len(region) >= min_domain):
                 yield region
         prev_index = index
+
+def find_sma_intercepts(sma_short, sma_long, index_series=None):
+    """Given two SMAs, return their intercept points
+
+    Args:
+        sma_short (pandas.Series): First SMA used to define overlaps
+        sma_long (pandas.Series): Second SMA used to define overlaps
+        index_series (pandas.Series): If specified, convert the overlap
+            points' indices from the index values from `sma_short`/`sma_long`
+            to the index values of `index_series`.  The values of `index_series`
+            should correspond to the indices of `sma_short`/`sma_long`.
+
+    Returns:
+        pandas.DataFrame indexed according to either the same index as
+            `sma_short`/`sma_long` or the index of `index_series` (if
+            provided).  DataFrame columns are
+          * `_datetime_start`; index values from `sma_short`/`sma_long`
+          * `positive`: if the intersection happened where `sma_short`
+            had a negative slope
+          * `sma_short`: values copied directly from `sma_short`
+          * `sma_long`: values copied directly from `sma_long`
+            
+    """
+    x_column = '_datetime_start'
+    results = {
+        '_datetime_start': [],
+        'positive': [],
+        'sma_short': [],
+        'sma_long': [],
+    }
+
+    # Walk through both SMAs and find intercepts
+    above = None
+    for index, value in enumerate(sma_short):
+        if above is None:
+            above = value > sma_long[index]
+        above_now = value > sma_long[index]
+        if above_now != above:
+            results[x_column].append(sma_short.index[index])
+            results['positive'].append(not above)
+            results['sma_short'].append(value)
+            results['sma_long'].append(sma_long[index])
+        above = above_now
+
+    # Now convert sma index values to dataframe.index values
+    if index_series is not None:
+        results['index'] = [index_series[index_series == x].index[0] for x in results[x_column]]
+        result = pandas.DataFrame(results).set_index('index')
+    else:
+        result = pandas.DataFrame(results)
+
+    return result
 
 def generate_loci_sma(dataframe, column, mins, maxes, **kwargs):
     """Identify min and max values using simple moving average
