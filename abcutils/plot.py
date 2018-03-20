@@ -685,22 +685,29 @@ def classified_extremes_summary(classified_extremes, normalized=True, ax=None):
 
     return ax
 
-def fix_xticks_timeseries(ax, criteria=(lambda x: x.day == 1)):
+def fix_xticks_timeseries(ax, format="%b %d, %Y", criteria=(lambda x: x.day == 1), **kwargs):
     """Set x tick markers of a time series plot
     
     Args:
         ax (matplotlib.Axes): plot axes to modify
+        format (str): format for tick labels to be passed to strftime
         criteria (function): function to determine when a tick label should be
             drawn; its only argument should be an epoch timestamp (e.g., a value
             on the x axis)
+        kwargs: arguments to be passed to `Axes.set_xticklabels()`
     """
+    default_args = {
+        'rotation': 30,
+        'ha': 'right',
+    }
+    default_args.update(kwargs)
     xticks = []
     x_now, x_high = ax.get_xlim()
     while x_now < x_high:
         if criteria(datetime.datetime.fromtimestamp(x_now)): # include first of each month
             xticks.append(x_now)
         x_now += datetime.timedelta(days=1).total_seconds()
-    xticklabels = [datetime.datetime.fromtimestamp(x).strftime("%b %d, %Y") for x in xticks]
+    xticklabels = [datetime.datetime.fromtimestamp(x).strftime(format) for x in xticks]
     ax.set_xticks(xticks)
-    ax.set_xticklabels(xticklabels, rotation=30, ha='right')
+    ax.set_xticklabels(xticklabels, **default_args)
     ax.set_yticks(ax.get_yticks()[0:])
