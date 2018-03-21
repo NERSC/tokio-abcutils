@@ -86,7 +86,7 @@ def load_dataset(verbose=True, *args, **kwargs):
     # Drop some of the weird columns left over from the CSV
     dataframe = dataframe.drop(columns=['Unnamed: 0', 'index'])
 
-    filtered_df = abcutils.core.apply_filters(dataframe, filters, verbose).copy()
+    filtered_df = abcutils.core.apply_filters(dataframe, filters, verbose).sort_values('_datetime_start').copy()
 
     # Reset the index to ensure that there are no degenerate indices in the final dataframe
     filtered_df.index = pandas.Index(data=numpy.arange(len(filtered_df)), dtype='int64')
