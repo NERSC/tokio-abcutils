@@ -430,7 +430,8 @@ def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
         intercepts = find_sma_intercepts(sma_short, sma_long, dataframe[x_column])
     
     results = {
-        '_datetime_start': [],
+        'index': [],
+        x_column: [],
         'positive': [],
         'sma_short': [],
         'sma_long': [],
@@ -459,12 +460,10 @@ def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
                 results['positive'].append(intercepts.loc[index]['positive'])
                 results['sma_short'].append(sma_short.iloc[closest_iloc])
                 results['sma_long'].append(sma_long.iloc[closest_iloc])
+                results['index'].append(closest_index)
 
         prev_index = index
 
-    # Now convert sma index values to dataframe.index values
-    x_series = dataframe[x_column]
-    results['index'] = [x_series[x_series == x].index[0] for x in results[x_column]]
     result = pandas.DataFrame(results).set_index('index')
 
     return result
