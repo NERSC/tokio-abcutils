@@ -451,7 +451,10 @@ def clustered_correlation_bars(dataframes, plot_metrics, column_key=None, width=
 
     return ax
 
-def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None, sma_intercepts=None, ax=None, **kwargs):
+def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
+                 sma_intercepts=None, ax=None, 
+                 regioncolors=['#0000000A', '#FFFFFF00'],
+                 **kwargs):
     """Plot the raw data and region boundaries of a time series
     
     Args:
@@ -462,6 +465,9 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None, sm
         sma_intercepts (pandas.DataFrame): output of 
             abcutils.features.sma_intercepts; if none is provided, calculate it
             using `short_window` and `long_window`
+        ax (matplotlib.Axes): axes to draw on; create new Axes if None
+        regioncolors (list of str): colors to use when shading alternating
+            regions
         kwargs: arguments to be passed to abcutils.features.sma_intercepts()
         
     Returns:
@@ -478,7 +484,7 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None, sm
         fig.set_size_inches(16, 4)
         
     # plot the raw data
-    delta = x_raw.iloc[1] - x_raw.iloc[0]
+    delta = 86400 # hardcode sampling rate at 1 day
     ax.bar(x_raw, y_raw, width=delta, alpha=0.5)
     ax.grid()
     ax.set_ylabel(abcutils.CONFIG['metric_labels'].get(plot_metric, plot_metric).replace(" ", "\n"))
@@ -489,19 +495,19 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None, sm
         sma_intercepts = abcutils.features.sma_intercepts(dataframe, plot_metric, short_window, long_window, **kwargs)
     left_x = None
     min_y, max_y = ax.get_ylim()
-    for row in sma_intercepts.itertuples():
+    for index, row in enumerate(sma_intercepts.itertuples()):
         this_x = abcutils.core.pd2epoch(row[1])
         if left_x is None:
             left_x = this_x
         else:
+#           color='#8B45130A'
             ax.add_patch(matplotlib.patches.Rectangle(xy=(left_x, min_y),
                          width=(this_x - left_x),
                          height=(max_y - min_y),
-                         color='black',
-                         linewidth=0,
-                         alpha=0.10,
-                         zorder=0))
-            left_x = None
+                         color=regioncolors[index % 2],
+                         linewidth=0))
+            left_x = this_x
+#           left_x = None
 
     ### also calculate and plot the SMAs
     if short_window:
