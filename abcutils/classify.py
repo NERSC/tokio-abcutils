@@ -89,6 +89,15 @@ def identify_contributors(dataframe, dependent_column, minima_iloc=-1, want_good
                 'value': dataframe[column].iloc[minima_iloc],
                 'cutoff': cutoff,
             }
+            # calculate p-value
+            num_match = 0
+            num_tot = 0
+            for loc, observation in dataframe[column].iteritems():
+                num_tot += 1
+                if compare(observation, cutoff):
+                    num_match += 1
+            # subtract one because we'll always match ourself in the above loop
+            result['pvalue'] = float(num_match) / num_tot
         else:
             result = None
 
@@ -138,6 +147,7 @@ def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False
             * `_loci_classified`: number of loci for which contributors were found
             * `_tot_<metric>`: number of rows that registered a non-NaN value
               for <metric>
+            * `_pval_<metric>`: p-value for <metric>
     """
     results = {
         '_loci_ignored': 0,
@@ -173,6 +183,14 @@ def count_contributors(dataframe, plot_metric, loci, min_points, want_good=False
                 results['_loci_classified'] += 1
                 for contributor in contributors:
                     results[contributor['metric']] = results.get(contributor['metric'], 0) + 1
+                    key = '_pval_' + contributor['metric']
+                    results[key] = results.get(key, 0.0) + contributor['pvalue']
+
+    for metric in results.keys():
+        if metric.startswith('_pval_'):
+            tot_key = metric.replace('_pval_', '')
+            if tot_key in results:
+                results[metric] /= results[tot_key]
     return results
 
 
@@ -182,7 +200,8 @@ def classify_extreme_measurements(dataframe,
                                   want_good,
                                   test_platforms=None,
                                   benchmark_ids=None,
-                                  classifier=DEFAULT_CLASSIFIER):
+                                  classifier=DEFAULT_CLASSIFIER,
+                                  **kwargs):
     """Classify the sources of extreme performance
 
     Args:
@@ -199,7 +218,7 @@ def classify_extreme_measurements(dataframe,
             (default: all)
         classifier (str): name of classifier technique to use; corresponds to
             keys in abcutils.classify.CLASSIFIERS
-
+        kwargs: arguments to pass to abcutils.features.generate_loci_sma
     Returns:
         dict with the following keys:
             - totals: number of extreme values classified, unclassifiable,
@@ -209,6 +228,13 @@ def classify_extreme_measurements(dataframe,
             - per_test (list of dict): each dict reports the keys flagged
                 for a single extreme value.  Easy to transform into DataFrame
     """
+    args = {
+        'short_window': abcutils.features.SHORT_WINDOW,
+        'long_window': abcutils.features.LONG_WINDOW,
+        'min_domain': abcutils.features.MIN_REGION,
+    }
+    args.update(kwargs)
+
     if not test_platforms:
         test_platforms = sorted(dataframe['_test_platform'].unique())
     if not benchmark_ids:
@@ -226,7 +252,8 @@ def classify_extreme_measurements(dataframe,
             loci = abcutils.features.generate_loci_sma(_filtered_df,
                                                        plot_metric,
                                                        mins=(not want_good),
-                                                       maxes=want_good)
+                                                       maxes=want_good,
+                                                       **args)
             result = count_contributors(dataframe=_filtered_df[['_datetime_start'] + secondary_metrics],
                                         plot_metric=plot_metric,
                                         loci=loci,
@@ -238,10 +265,24 @@ def classify_extreme_measurements(dataframe,
             results.append(result)
 
     results_flat = {}
+    count_flat = {}
     for result in results:
         for key, value in result.iteritems():
             if isinstance(value, numbers.Number):
                 results_flat[key] = results_flat.get(key, 0) + value
+                count_flat[key] = count_flat.get(key, 0) + 1
+
+    drop_keys = []
+    for key in results_flat:
+        if key.startswith('_pval_'):
+            base_key = key.replace('_pval_', '')
+            if base_key in count_flat:
+                results_flat[key] /= count_flat[key]
+            else:
+                # throw out pvalues we can't average
+                drop_keys.append(key)
+    for key in drop_keys:
+        del results_flat[key]
 
     counts = {
         'classified': results_flat.pop('_loci_classified'),
