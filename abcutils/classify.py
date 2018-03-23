@@ -231,7 +231,7 @@ def classify_extreme_measurements(dataframe,
     args = {
         'short_window': abcutils.features.SHORT_WINDOW,
         'long_window': abcutils.features.LONG_WINDOW,
-        'min_domain': abcutils.features.MIN_REGION,
+        'min_width': abcutils.features.MIN_REGION,
     }
     args.update(kwargs)
 
