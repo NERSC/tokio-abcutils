@@ -390,7 +390,7 @@ def sma_centroids(dataframe, column, short_window, long_window, min_width=None, 
                               min_width=min_width)
 
 def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
-                            x_column='_datetime_start', min_width=None):
+                            x_column='_datetime_start', min_width=0):
     """Convert two SMAs into centroids
 
     Converts a two SMA Series as returned by `calculate_sma()` to a DataFrame
@@ -439,8 +439,8 @@ def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
 
     # Walk through intercepts and identify central points of each region
     prev_index = None
-    for index in intercepts[keep].index: # index values correspond to `dataframe.index`
-        if prev_index is not None:
+    for iloc, index in enumerate(intercepts.index): # index values correspond to `dataframe.index`
+        if prev_index is not None and keep[iloc]:
             region_idx0 = dataframe.index.get_loc(prev_index)
             region_idxf = dataframe.index.get_loc(index)
             region = dataframe.iloc[region_idx0:region_idxf][x_column]
