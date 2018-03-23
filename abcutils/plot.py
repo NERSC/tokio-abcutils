@@ -717,3 +717,27 @@ def fix_xticks_timeseries(ax, format="%b %d, %Y", criteria=(lambda x: x.day == 1
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticklabels, **default_args)
     ax.set_yticks(ax.get_yticks()[0:])
+
+def draw_region(ax, region, **kwargs):
+    """Create a shaded patch for a DataFrame of regions
+    
+    Args:
+        ax (matplotlib.Axes): plot axes to modify
+        region (pandas.DataFrame): one element of the output of
+            `features.intercepts_to_regions()`
+        kwargs: arguments to pass to `matplotlib.Axes.add_patch()`
+    """
+    args = {
+        'facecolor': 'black',
+        'linewidth': 0,
+        'alpha': 0.10,
+    }
+    args.update(kwargs)
+    min_y, max_y = ax.get_ylim()
+    min_x = abcutils.core.pd2epoch(region.iloc[0]['_datetime_start'])
+    max_x = abcutils.core.pd2epoch(region.iloc[-1]['_datetime_start'])
+    patch = ax.add_patch(matplotlib.patches.Rectangle(xy=(min_x, min_y),
+                         width=(max_x - min_x),
+                         height=(max_y - min_y),
+                         **args))
+    return patch
