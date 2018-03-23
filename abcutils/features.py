@@ -317,8 +317,6 @@ def find_sma_intercepts(sma_short, sma_long, index_series=None):
             `sma_short`/`sma_long` or the index of `index_series` (if
             provided).  DataFrame columns are
           * `_datetime_start`; index values from `sma_short`/`sma_long`
-          * `positive`: if the intersection happened where `sma_short`
-            had a negative slope
           * `sma_short`: values copied directly from `sma_short`
           * `sma_long`: values copied directly from `sma_long`
             
@@ -326,7 +324,6 @@ def find_sma_intercepts(sma_short, sma_long, index_series=None):
     x_column = '_datetime_start'
     results = {
         x_column: [],
-        'positive': [],
         'sma_short': [],
         'sma_long': [],
     }
@@ -339,7 +336,6 @@ def find_sma_intercepts(sma_short, sma_long, index_series=None):
         above_now = value > sma_long[index]
         if above_now != above:
             results[x_column].append(sma_short.index[index])
-            results['positive'].append(not above)
             results['sma_short'].append(value)
             results['sma_long'].append(sma_long[index])
         above = above_now
@@ -419,8 +415,6 @@ def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
             `sma_short`/`sma_long` or the index of `index_series` (if
             provided).  DataFrame columns are
           * `_datetime_start`; index values from `sma_short`/`sma_long`
-          * `positive`: if the intersection happened where `sma_short`
-            had a negative slope.  This is *not* adjusted during the
             conversion from an intercept to a centroid.
           * `sma_short`: values copied directly from `sma_short`
           * `sma_long`: values copied directly from `sma_long`
@@ -432,7 +426,6 @@ def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
     results = {
         'index': [],
         x_column: [],
-        'positive': [],
         'sma_short': [],
         'sma_long': [],
     }
@@ -457,7 +450,6 @@ def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
                 closest_index = closest_val[closest_val == closest_val.min()].index[0]
                 closest_iloc = dataframe.index.get_loc(closest_index)
                 results[x_column].append(dataframe.loc[closest_index][x_column])
-                results['positive'].append(intercepts.loc[index]['positive'])
                 results['sma_short'].append(sma_short.iloc[closest_iloc])
                 results['sma_long'].append(sma_long.iloc[closest_iloc])
                 results['index'].append(closest_index)
@@ -469,9 +461,7 @@ def find_sma_centroids(dataframe, sma_short, sma_long, intercepts=None,
     return result
 
 
-def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
-                     min_func=pandas.Series.idxmin,
-                     max_func=pandas.Series.idxmax):
+def sma_local_minmax(dataframe, column, short_window, long_window, minmax='min', **kwargs):
     """Identify local minima and maxima for non-overlapping SMA regions
 
     Segment `dataframe` into regions based on where their short and long SMAs
@@ -487,18 +477,22 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
             the short window
         long_window (int): number of consecutive dataframe rows to include in
             the long window
-        min_domain (int): ignore local minima calculated from sets of rows with
-            fewer than `min_domain` rows
-        min_func (function): function to apply to a Series describing a region
-            to determine the index corresponding to the most extreme value for
-            regions where the short SMA < long SMA
-        max_func (function): function to apply to a Series describing a region
-            to determine the index corresponding to the most extreme value for
-            regions where the short SMA > long SMA
+        minmax (str): either 'min' or 'max' to calculate mins or maxes in each
+            identified region
+        **kwargs: arguments to pass to `intercepts_to_region`
 
     Returns:
         DataFrame with indices corresponding to dataframe
     """
+    args = {
+        'min_width': 3,
+        'merge_small': False,
+    }
+    args.update(kwargs)
+    minmaxmap = {
+        'min': pandas.Series.idxmin,
+        'max': pandas.Series.idxmax,
+    }
     x_column = '_datetime_start'
 
     intercepts = sma_intercepts(dataframe, column, short_window, long_window)
@@ -506,39 +500,29 @@ def sma_local_minmax(dataframe, column, short_window, long_window, min_domain=3,
     results = {
         'index': [],
         x_column: [],
-        'positive': [],
         column: [],
         'region_start': [],
         'region_end': [],
     }
 
+    regions = intercepts_to_region(dataframe, intercepts, **args)
+
     # Iterate through all the transition points and identify mins and maxes
     # between each intersection.  Note that we are ignoring the unbounded
     # first and last regions
-    prev_row = None
-    for row in intercepts.itertuples():
-        if prev_row is not None:
-            minmax_idx = None
-            region_idx0 = dataframe.index.get_loc(prev_row.Index)
-            region_idxf = dataframe.index.get_loc(row.Index)
-            region = dataframe.iloc[region_idx0:region_idxf][column]
-            if len(region) >= min_domain:
-                if prev_row.positive and not row.positive:
-                    minmax_idx = max_func(region)
-                elif not prev_row.positive and row.positive:
-                    minmax_idx = min_func(region)
-                if minmax_idx:
-                    results['index'].append(minmax_idx)
-                    results[x_column].append(dataframe.loc[minmax_idx][x_column])
-                    results['positive'].append(prev_row.positive)
-                    results[column].append(dataframe.loc[minmax_idx][column])
-                    results['region_start'].append(prev_row.Index)
-                    results['region_end'].append(row.Index)
-        prev_row = row
+    for region in regions:
+        minmax_idx = minmaxmap[minmax](region[column])
+        if minmax_idx:
+            results['index'].append(minmax_idx)
+            results[x_column].append(dataframe.loc[minmax_idx][x_column])
+            results[column].append(dataframe.loc[minmax_idx][column])
+            results['region_start'].append(region.index[0])
+            next_region_idx0 = dataframe.index[dataframe.index.get_loc(region.index[-1]) + 1]
+            results['region_end'].append(next_region_idx0)
 
     return pandas.DataFrame(results).set_index('index')
 
-def intercepts_to_region(dataframe, intercepts, min_domain=None):
+def intercepts_to_region(dataframe, intercepts, min_width=None, merge_small=False):
     """Generate regions from a dataframe and sma_intercepts
 
     Args:
@@ -547,8 +531,10 @@ def intercepts_to_region(dataframe, intercepts, min_domain=None):
         intercepts (pandas.DataFrame or pandas.Series): object with same index
             as `dataframe` whose index values denote intercepts.  Typically the
             output of `sma_intercepts()` is used here.
-        min_domain (int): ignore local minima calculated from sets of rows with
-            fewer than `min_domain` rows
+        min_width (int): ignore local minima calculated from sets of rows with
+            fewer than `min_width` rows
+        merge_small (bool): instead of dropping regions that are smaller than
+            `min_width`, merge them with the next region
     """
     prev_index = None
     for index in intercepts.index:
@@ -556,7 +542,11 @@ def intercepts_to_region(dataframe, intercepts, min_domain=None):
             region_idx0 = dataframe.index.get_loc(prev_index)
             region_idxf = dataframe.index.get_loc(index)
             region = dataframe.iloc[region_idx0:region_idxf]
-            if (not min_domain) or (len(region) >= min_domain):
+            width = len(region)
+            if merge_small and min_width and width < min_width:
+                # keep prev_index as-is and keep looking
+                continue
+            elif (not min_width) or (width >= min_width):
                 yield region
         prev_index = index
 
@@ -570,7 +560,7 @@ def generate_loci_sma(dataframe, column, mins, maxes, **kwargs):
             slopes should be calculated 
         mins (bool): True if minima should be identified in each region
         maxes (bool): True if maxima should be identified in each region
-        kwargs: arguments to be passed to abcutils.features.sma_local_minmax()
+        kwargs: arguments to be passed to `sma_local_minmax()`
 
     Returns:
         pandas.DataFrame indexed as `dataframe` with columns
@@ -581,23 +571,23 @@ def generate_loci_sma(dataframe, column, mins, maxes, **kwargs):
     args = {
         'short_window': SHORT_WINDOW,
         'long_window': LONG_WINDOW,
-        'min_domain': MIN_REGION,
+        'min_width': MIN_REGION,
     }
     args.update(kwargs)
 
     min_vals = None
     max_vals = None
     if mins:
-        min_vals = abcutils.features.sma_local_minmax(
+        min_vals = sma_local_minmax(
             dataframe=dataframe,
             column=column,
-            max_func=pandas.Series.idxmin,
+            minmax='min',
             **args)
     if maxes:
-        max_vals = abcutils.features.sma_local_minmax(
+        max_vals = sma_local_minmax(
             dataframe=dataframe,
             column=column,
-            min_func=pandas.Series.idxmax,
+            minmax='max',
             **args)
     return pandas.concat((min_vals, max_vals)).sort_values('_datetime_start')
 
@@ -611,7 +601,7 @@ def generate_loci_peakdetect(dataframe, column, mins, maxes, **kwargs):
             slopes should be calculated 
         mins (bool): True if minima should be identified in each region
         maxes (bool): True if maxima should be identified in each region
-        kwargs: arguments to be passed to abcutils.features.sma_local_minmax()
+        kwargs: arguments to be passed to `abcutils.peakdetect.peakdetect()`
 
 
     Returns:
