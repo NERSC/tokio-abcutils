@@ -549,7 +549,7 @@ def locus_summary(dataframe, plot_metric, loci, ax=None, **kwargs):
     sma_overlaps(dataframe, plot_metric, abcutils.features.SHORT_WINDOW, abcutils.features.LONG_WINDOW, ax=ax, **kwargs)
         
     time0, time1 = dataframe.iloc[0:2]['_datetime_start'].apply(lambda x: time.mktime(x.timetuple()))
-    delta = time1 - time0
+    delta = 86400
     ax.bar(x_low, y_low, width=delta, color='red', alpha=0.5)
 
     return ax
