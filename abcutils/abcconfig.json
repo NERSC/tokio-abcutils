@@ -267,7 +267,8 @@
         "jobsdb_concurrent_nodes": "Concurrent Nodes in Use",
         "topology_job_avg_radius": "Average Job Radius",
         "topology_job_max_radius": "Maximum Job Radius",
-        "topology_job_min_radius": "Minimum Job Radius"
+        "topology_job_min_radius": "Minimum Job Radius",
+        "random": "Random Variable"
     },
     "benchmark_labels": {
         "ior_shared_read": "IOR shared-file read",
