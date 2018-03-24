@@ -289,5 +289,18 @@
         "vpicio_uni_shared_write": "VPIC(W)",
         "hacc_io_read_fpp_read": "HACC(R)",
         "hacc_io_write_fpp_write": "HACC(W)"
+    },
+    "umami_rows": {
+        "darshan_normalized_perf_by_max": "Application Performance",
+        "coverage_factor_bw": "Bandwidth CF",
+        "coverage_factor_opens": "open(2) CF",
+        "coverage_factor_stats": "stat(2) CF",
+        "coverage_factor_ops": "IOPS CF",
+        "fs_ave_mds_cpu": "Metadata Server Load",
+        "fs_ave_oss_cpu": "Data Server Load",
+        "fshealth_ost_most_full_pct": "File System Fullness",
+        "fshealth_ost_overloaded_oss_count": "LUN Failover Count",
+        "topology_job_max_radius": "Max Job Radius",
+        "random": "Random Variable"
     }
 }
