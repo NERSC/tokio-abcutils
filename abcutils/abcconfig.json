@@ -300,7 +300,25 @@
         "fs_ave_oss_cpu": "Data Server Load",
         "fshealth_ost_most_full_pct": "File System Fullness",
         "fshealth_ost_overloaded_oss_count": "LUN Failover Count",
-        "topology_job_max_radius": "Max Job Radius",
-        "random": "Random Variable"
+        "topology_job_max_radius": "Max Job Radius"
+    },
+    "umami_row_order": [
+        "darshan_normalized_perf_by_max",
+        "coverage_factor_bw",
+        "coverage_factor_opens",
+        "coverage_factor_stats",
+        "coverage_factor_ops",
+        "fs_ave_mds_cpu",
+        "fs_ave_oss_cpu",
+        "fshealth_ost_most_full_pct",
+        "fshealth_ost_overloaded_oss_count",
+        "topology_job_max_radius"
+    ],
+    "platform_labels": {
+        "cscratch@cori-knl": "Cori cscratch",
+        "scratch1@edison": "Edison scratch1",
+        "scratch2@edison": "Edison scratch2",
+        "scratch3@edison": "Edison scratch3",
+        "mira-fs1@mira": "Mira mira-fs1"
     }
 }
