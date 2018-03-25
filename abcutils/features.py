@@ -4,8 +4,8 @@ import pandas
 import scipy.stats
 import abcutils
 
-SHORT_WINDOW = pandas.Timedelta(days=7)
-LONG_WINDOW = pandas.Timedelta(days=28)
+SHORT_WINDOW = pandas.Timedelta(days=14)
+LONG_WINDOW = pandas.Timedelta(days=49)
 # minimum number of data points in a valid region
 MIN_REGION = 7
 

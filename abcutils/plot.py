@@ -500,14 +500,12 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
         if left_x is None:
             left_x = this_x
         else:
-#           color='#8B45130A'
             ax.add_patch(matplotlib.patches.Rectangle(xy=(left_x, min_y),
                          width=(this_x - left_x),
                          height=(max_y - min_y),
                          color=regioncolors[index % 2],
                          linewidth=0))
             left_x = this_x
-#           left_x = None
 
     ### also calculate and plot the SMAs
     if short_window:
