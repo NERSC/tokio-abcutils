@@ -1,6 +1,7 @@
 """
 Useful plotting routines for examining TOKIO-ABC data
 """
+import re
 import time
 import datetime
 import pandas
@@ -454,6 +455,7 @@ def clustered_correlation_bars(dataframes, plot_metrics, column_key=None, width=
 def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
                  sma_intercepts=None, ax=None, 
                  regioncolors=['#0000000A', '#FFFFFF00'],
+                 plotraw=True,
                  **kwargs):
     """Plot the raw data and region boundaries of a time series
     
@@ -468,6 +470,7 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
         ax (matplotlib.Axes): axes to draw on; create new Axes if None
         regioncolors (list of str): colors to use when shading alternating
             regions
+        plotraw (bool): plot raw performance data in addition to SMAs
         kwargs: arguments to be passed to abcutils.features.sma_intercepts()
         
     Returns:
@@ -485,7 +488,8 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
         
     # plot the raw data
     delta = 86400 # hardcode sampling rate at 1 day
-    ax.bar(x_raw, y_raw, width=delta, alpha=0.5)
+    if plotraw:
+        ax.bar(x_raw, y_raw, width=delta, alpha=0.5)
     ax.grid()
     ax.set_ylabel(abcutils.CONFIG['metric_labels'].get(plot_metric, plot_metric).replace(" ", "\n"))
     ax.set_xticklabels([datetime.datetime.fromtimestamp(x).strftime("%b %d") for x in ax.get_xticks()])
@@ -711,7 +715,7 @@ def fix_xticks_timeseries(ax, format="%b %d, %Y", criteria=(lambda x: x.day == 1
         if criteria(datetime.datetime.fromtimestamp(x_now)): # include first of each month
             xticks.append(x_now)
         x_now += datetime.timedelta(days=1).total_seconds()
-    xticklabels = [datetime.datetime.fromtimestamp(x).strftime(format) for x in xticks]
+    xticklabels = [re.sub(r'(\D)0([\d]+)', r'\1\2', datetime.datetime.fromtimestamp(x).strftime(format), 1) for x in xticks]
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticklabels, **default_args)
     ax.set_yticks(ax.get_yticks()[0:])
