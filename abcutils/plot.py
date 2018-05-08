@@ -54,7 +54,42 @@ def correlation_matrix(dataframe, ax=None, fontsize=20, cmap='seismic', **kwargs
     ax.set_yticklabels(correlations.columns, fontsize=fontsize)
     return ax, correlations
 
-def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None, row_name_map=None, **kwargs):
+
+def _style_correlation_cell(cell_obj, coeff, pval):
+    """Apply styling to a correlation table cell based on its value
+
+    Args:
+        cell_obj (matplotlib.table.Cell): the cell to be styled
+        coeff (float): the value of the correlation coefficient
+        pval (float): the value of the correlation's p-value
+    """
+    ### make moderate correlations **bold**
+    if abs(coeff) >= 0.30:
+        cell_obj.get_text().set_fontweight('bold')
+    ### make weak correlations _italic_
+    elif abs(coeff) < 0.10:
+        cell_obj.get_text().set_fontstyle('italic')
+
+    ### color code cells based on p-value
+    if pval < 0.01:
+        set_color = 'blue'
+    elif pval < 0.05:
+        set_color = 'green'
+    else:
+        set_color = 'red'
+
+    ### for debugging, since the resulting figure doesn't contain any p-values
+    # print "%30s pval=%10.4f; setting color to %s" % (index, pval, set_color)
+    cell_obj.set_color(set_color)
+    cell_obj.set_alpha(0.25)
+
+def correlation_vector_table(dataframe,
+                             ax=None,
+                             fontsize=14,
+                             col_name_map=None,
+                             row_name_map=None,
+                             cell_styler=_style_correlation_cell,
+                             **kwargs):
     """
     Generate a table from a dataframe which contains columns containing
     'coefficient' and 'p-value' in their headers.  Intended to be used with the
@@ -110,26 +145,7 @@ def correlation_vector_table(dataframe, ax=None, fontsize=14, col_name_map=None,
             else:
                 coeff = float(value)
                 pval = dataframe.loc[index][column.replace('coefficient', 'p-value')]
-
-                ### make moderate correlations **bold**
-                if abs(coeff) >= 0.30:
-                    cell_obj.get_text().set_fontweight('bold')
-                ### make weak correlations _italic_
-                elif abs(coeff) < 0.10:
-                    cell_obj.get_text().set_fontstyle('italic')
-
-                ### color code cells based on p-value
-                if pval < 0.01:
-                    set_color = 'blue'
-                elif pval < 0.05:
-                    set_color = 'green'
-                else:
-                    set_color = 'red'
-
-                ### for debugging, since the resulting figure doesn't contain any p-values
-                # print "%30s pval=%10.4f; setting color to %s" % (index, pval, set_color)
-                cell_obj.set_color(set_color)
-                cell_obj.set_alpha(0.25)
+                cell_styler(cell_obj, coeff, pval)
                 remap_values[cell_pos] = "%+.4f" % coeff
         cell_obj.set_height(height_scale * cell_obj.get_height())
         cell_obj.set_edgecolor('black')
