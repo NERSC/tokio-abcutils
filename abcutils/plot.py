@@ -8,7 +8,7 @@ import pandas
 import numpy
 import matplotlib
 import matplotlib.pyplot
-import tokio.tools.umami
+import tokio.analysis.umami
 import abcutils
 
 DEFAULT_BOXPLOT_GROUP_BY = ['darshan_fpp_or_ssf_job', 'darshan_read_or_write_job', 'darshan_app']
