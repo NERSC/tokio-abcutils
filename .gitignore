@@ -1,6 +1,8 @@
 *.pyc
 .ipynb_checkpoints
+sc18-*.py
 cache.hdf5
+contributors.hdf5
 results
 summaries
 figs
