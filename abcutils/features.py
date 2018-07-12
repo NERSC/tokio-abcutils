@@ -172,37 +172,6 @@ def sliding_window_slopes(dataframe, column, start, end, width, delta):
 
     return result
 
-def sma_by_row(dataframe, x_column, y_column, window, **kwargs):
-    """Calculate the simple moving average for a column of a dataset
-
-    Calculates the SMA using a window that is expressed in number of **rows**
-    rather than the units of measurement contained in those rows.
-
-    Args:
-        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
-            should be calculated
-        x_column (str): name of column to treat as x values when calculating
-            the simple moving average
-        y_column (str): name of column over which simple moving average should
-            be calculated
-        window (int): number of consecutive dataframe rows to include in the
-            simple moving average
-        kwargs: parameters to pass to pandas.Series.rolling
-
-    Returns:
-        Series of simple moving averages indexed by x_column
-    """
-    default_args = {
-        'min_periods': 1,
-        'window': window,
-        'center': True,
-    }
-    default_args.update(kwargs)
-
-    filtered_series = dataframe[[x_column, y_column]].set_index(x_column).iloc[:, 0]
-
-    return filtered_series.rolling(window=window, **kwargs).mean().sort_index()
-
 def sma_by_value(dataframe, x_column, y_column, window, **kwargs):
     """Calculate the simple moving average for a column of a dataset
 
@@ -590,38 +559,3 @@ def generate_loci_sma(dataframe, column, mins, maxes, **kwargs):
             minmax='max',
             **args)
     return pandas.concat((min_vals, max_vals)).sort_values('_datetime_start')
-
-def generate_loci_peakdetect(dataframe, column, mins, maxes, **kwargs):
-    """Identify min and max values using peakdetect() method
-
-    Args:
-        dataframe (pandas.DataFrame): dataframe from which loci should be
-            identified
-        column (str): name of column over in dataframe from which sliding-window
-            slopes should be calculated 
-        mins (bool): True if minima should be identified in each region
-        maxes (bool): True if maxima should be identified in each region
-        kwargs: arguments to be passed to `abcutils.peakdetect.peakdetect()`
-
-
-    Returns:
-        pandas.Series indexed as `dataframe`, named `_datetime_start`,
-        and containing `_datetime_start` values corresponding to loci.
-    """
-    args = {
-        'lookahead': 7
-    }
-    args.update(kwargs)
-
-    highs, lows = peakdetect.peakdetect(dataframe[column].sort_index(ascending=False),
-                                                 dataframe.sort_index(ascending=False).index,
-                                                 **args)
-    min_vals = None
-    max_vals = None
-    if mins:
-        indices = [x[0] for x in lows]
-        min_vals = dataframe.loc[indices]['_datetime_start']
-    if maxes:
-        indices = [x[0] for x in highs]
-        max_vals = dataframe.loc[indices]['_datetime_start']
-    return pandas.concat((min_vals, max_vals)).sort_values()

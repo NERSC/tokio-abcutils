@@ -1,4 +1,4 @@
-SCRIPTS = sc18_figure10.py sc18_figure2.py sc18_figure3_figure4.py sc18_figure5.py sc18_figure6_figure7.py sc18_figure8_figure9.py
+SCRIPTS = sc18_figure10.py sc18_figure2.py sc18_figure3_figure4.py sc18_figure5.py sc18_figure6_figure7.py sc18_figure8_figure9.py cug18_correlation_table.py
 
 all: $(SCRIPTS)
 
