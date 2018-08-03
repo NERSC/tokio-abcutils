@@ -364,7 +364,7 @@ def generate_umami(dataframe, plot_metrics, highlight_index=-1, show_empty=False
     column names.  Relies on abcutil.CONFIG to create labels and determine if
     big_is_good
     """
-    umami = tokio.tools.umami.Umami()
+    umami = tokio.analysis.umami.Umami()
     for metric in plot_metrics:
         try:
             num_nans = sum(numpy.isnan(dataframe[metric]))
@@ -379,7 +379,7 @@ def generate_umami(dataframe, plot_metrics, highlight_index=-1, show_empty=False
 
         label = abcutils.CONFIG['metric_labels'].get(metric, metric)
         big_is_good = abcutils.CONFIG['metric_big_is_good'].get(metric, True)
-        umami[metric] = tokio.tools.umami.UmamiMetric(
+        umami[metric] = tokio.analysis.umami.UmamiMetric(
             timestamps=dataframe['_datetime_start'],
             values=dataframe[metric],
             label=label,
