@@ -172,7 +172,7 @@ def sliding_window_slopes(dataframe, column, start, end, width, delta):
 
     return result
 
-def sma_by_value(dataframe, x_column, y_column, window, **kwargs):
+def calculate_sma(dataframe, x_column, y_column, window, **kwargs):
     """Calculate the simple moving average for a column of a dataset
 
     Calculates the SMA using a window that is expressed in the **units of
@@ -204,35 +204,6 @@ def sma_by_value(dataframe, x_column, y_column, window, **kwargs):
         values.append(window_df[y_column].mean())
 
     return pandas.Series(values, index=indices, name=y_column).sort_index()
-
-def calculate_sma(dataframe, x_column, y_column, window, method='value', **kwargs):
-    """Calculate the simple moving average for a column of a dataset
-
-    Dispatches an SMA calculation function
-
-    Args:
-        dataframe (pandas.DataFrame): dataframe from which sliding window slopes
-            should be calculated
-        x_column (str): name of column to treat as x values when calculating
-            the simple moving average
-        y_column (str): name of column over which simple moving average should
-            be calculated
-        window: width of the window over which the SMA will be calculated
-        method (str): 'value' or 'row'
-        kwargs: parameters to pass to SMA calculator
-
-    Returns:
-        Series of simple moving averages indexed by x_column
-    """
-    methods = {
-        'value': sma_by_value,
-        'row': sma_by_row,
-    }
-    method = methods.get(method)
-    if not method:
-        raise KeyError("Invalid method (%s)" % ', '.join(methods.keys()))
-
-    return method(dataframe=dataframe, x_column=x_column, y_column=y_column, window=window, **kwargs)
 
 def sma_intercepts(dataframe, column, short_window, long_window, min_width=None, **kwargs):
     """Identify places where two simple moving averages intercept
