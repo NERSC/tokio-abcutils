@@ -23,18 +23,9 @@ jobs database.
 ### Step 2. Generate job summary files
 
 Then we generate summary json files for each Darshan log.  This takes a
-significant amount of time, but it amounts to running the following command on
-every single Darshan log:
-
-    $ ./pytokio/bin/summarize_job.py --jobhost=cori \
-                                     --concurrentjobs \
-                                     --topology=data/cori.xtdb2proc.gz \
-                                     --ost \
-                                     --json \
-                                     results/runs.cori.2017-12/runs.cori.2017-12-31.5/glock_dbscan_*.darshan
-
-To do this in parallel, you can use the included `parallel_summarize_job.sh`
-script, e.g.,
+significant amount of time because it involves opening every Darshan log, then
+collecting metrics from across the system that correspond to that job.  To do
+this in parallel, use the included `parallel_summarize_job.sh` script, e.g.,
 
     $ ./parallel_summarize_job.sh edison 2>&1 | tee -a summarize_jobs-edison.log
     mkdir: created directory '/global/project/projectdirs/m888/glock/tokio-year/summaries/edison'
@@ -43,7 +34,17 @@ script, e.g.,
     Generating /global/project/projectdirs/m888/glock/tokio-year/summaries/edison/glock_ior_id4015752_2-18-63772-1376825852187540237_1.json
     ...
 
-The `summarize_job.py` script retrieves and indexes data from each connector,
+This script is just a parallel wrapper around `summarize_job.py` and is invoked
+on each darshan log with options similar to the following:
+
+    $ ./pytokio/bin/summarize_job.py --jobhost=cori \
+                                     --concurrentjobs \
+                                     --topology=data/cori.xtdb2proc.gz \
+                                     --ost \
+                                     --json \
+                                     results/runs.cori.2017-12/runs.cori.2017-12-31.5/glock_dbscan_*.darshan
+
+This `summarize_job.py` script retrieves and indexes data from each connector,
 but it does not strive to synthesize cross-connector metrics such as coverage
 factors.  That occurs in analysis that we will perform later on.
 
