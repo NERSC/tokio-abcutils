@@ -7,9 +7,9 @@ import abcutils.core
 DATE_START = datetime.datetime(2017, 2, 14)
 DATE_END = datetime.datetime(2018, 2, 15)
 INPUT_DATASETS = {
-    'edison': 'summaries/edison-summaries_2017-02-14-2018-02-15.csv',
-    'cori': 'summaries/cori-summaries_2017-02-14-2018-02-15.csv',
-    'mira': 'summaries/alcf-tokio-results-2_14_17-2_15_18.csv',
+    'edison': 'summaries/edison-summaries_2017-02-14-2018-02-15.csv.gz',
+    'cori': 'summaries/cori-summaries_2017-02-14-2018-02-15.csv.gz',
+    'mira': 'summaries/alcf-tokio-results-2_14_17-2_15_18.csv.gz',
 }
 CACHE_FILE = 'cache.hdf5'
 
