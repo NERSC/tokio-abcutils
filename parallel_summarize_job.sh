@@ -26,7 +26,8 @@ if [ -z "$NERSC_JOBSDB_HOST" ]; then
 fi
 
 export REPO_HOME="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
-export output_dir="$REPO_HOME/summaries/$jobhost"
+export output_dir=${output_dir:-"$REPO_HOME/summaries/$jobhost"}
+export input_dir=${input_dir:-"$REPO_HOME/results/runs.${jobhost}.*"}
 
 if [ ! -d "$output_dir" ]; then
     mkdir -vp "$output_dir"
@@ -54,4 +55,4 @@ export -f process
 
 # Add -quit to the find command below to test changes (it will only process one
 # darshan log before stopping)
-find -L $REPO_HOME/results/runs.${jobhost}.* -name '*.darshan' -print0 | xargs -n 64 -P 16 -0 bash -c 'process "$@"' derp
+find -L $input_dir -name '*.darshan' -print0 | xargs -n 64 -P 16 -0 bash -c 'process "$@"' derp
