@@ -9,7 +9,7 @@ DATE_END = datetime.datetime(2018, 2, 15)
 INPUT_DATASETS = {
     'edison': 'summaries/edison-summaries_2017-02-14-2018-02-15.csv.gz',
     'cori': 'summaries/cori-summaries_2017-02-14-2018-02-15.csv.gz',
-    'mira': 'summaries/alcf-tokio-results-2_14_17-2_15_18.csv.gz',
+    'mira': 'summaries/mira-summaries_2017-02-14_2018-02-15.csv.gz',
 }
 CACHE_FILE = 'cache.hdf5'
 
@@ -84,7 +84,9 @@ def load_dataset(verbose=True, *args, **kwargs):
     filters.append(dataframe['_test_platform'] != 'cscratch@cori-haswell')
 
     # Drop some of the weird columns left over from the CSV
-    dataframe = dataframe.drop(columns=['Unnamed: 0', 'index'])
+    dataframe = dataframe.drop(
+        columns=[x for x in ['Unnamed: 0', 'index'] if x in dataframe.columns],
+        axis=1)
 
     filtered_df = abcutils.core.apply_filters(dataframe, filters, verbose).sort_values('_datetime_start').copy()
 
