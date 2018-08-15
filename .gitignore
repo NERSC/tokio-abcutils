@@ -4,5 +4,3 @@ sc18_*.py
 cache.hdf5
 contributors.hdf5
 results
-summaries
-figs
