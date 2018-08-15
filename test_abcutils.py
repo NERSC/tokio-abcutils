@@ -3,12 +3,15 @@
 Basic tests and demonstrations of functionality for abcutil module
 """
 
+import re
 import pandas
 import matplotlib
 import abcutils
 
 SAMPLE_INPUT = 'sample_summaries.csv.gz'
 SAMPLE_CORRELATE_WITH = 'darshan_agg_perf_by_slowest_posix'
+
+REX_NO_DARSHAN_LABEL = re.compile(r'darshan_(min|max|ave|tot|num)')
 
 # prevent the test from throwing DISPLAY errors
 matplotlib.pyplot.switch_backend('agg')
@@ -150,8 +153,9 @@ class TestAbcDataFrame(object):
         for cell_pos, cell_obj in ax.tables[0].get_celld().iteritems():
             if cell_pos[1] == -1:
                 row_label = cell_obj.get_text().get_text()
-                print "%s has no underscores?" % row_label
-                assert '_' not in row_label
+                if not REX_NO_DARSHAN_LABEL.match(row_label):
+                    print "%s has no underscores?" % row_label
+                    assert '_' not in row_label
 
     def test_grouped_boxplot(self):
         """
@@ -177,10 +181,10 @@ class TestAbcDataFrame(object):
         test abcutils.plot.generate_umami
         """
         metrics = ['darshan_agg_perf_by_slowest_posix', 'coverage_factor_bw']
-        fig = abcutils.plot.generate_umami(self.dataframe, metrics)
-        print "Number of metrics plotted: %d vs expected %d" % ((len(fig.axes)/2), len(metrics))
-        assert len(fig.axes) == 2 * len(metrics) # two columns * number of metrics
+        axes = abcutils.plot.generate_umami(self.dataframe, metrics)
+        print "Number of metrics plotted: %d vs expected %d" % ((len(axes)/2), len(metrics))
+        assert len(axes) == 2 * len(metrics) # two columns * number of metrics
 
-        print "Number of plotted data points: %d" % (len(fig.axes[0].get_xticklabels()))
-        num_datapoints = len(fig.axes[0].get_xticklabels())
+        print "Number of plotted data points: %d" % (len(axes[0].get_xticklabels()))
+        num_datapoints = len(axes[0].get_xticklabels())
         assert num_datapoints > 1
