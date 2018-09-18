@@ -76,7 +76,7 @@ class Streak(object):
         """
         report = self.report()
         if report is not None:
-            print "%(start).3f@%(start_index)d to %(end).3f@%(end_index)d (%(delta).3f over %(length)d steps)" % report
+            print("%(start).3f@%(start_index)d to %(end).3f@%(end_index)d (%(delta).3f over %(length)d steps)" % report)
 
 def find_streaks_df(dataframe, column, min_streak=3):
     """

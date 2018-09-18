@@ -52,7 +52,7 @@ def load_and_synthesize_csv(csv_file, system="edison"):
 
     # Convert timestamps to datetime objects.  Try both epoch timestamps and datetime strings.
     for datetime_field in '_datetime_start', '_datetime_end':
-        if isinstance(dataframe[datetime_field].iloc[0], basestring):
+        if isinstance(dataframe[datetime_field].iloc[0], str):
             dataframe[datetime_field] = pandas.to_datetime(dataframe[datetime_field])
         else:
             dataframe[datetime_field] = dataframe[datetime_field].apply(lambda x: datetime.datetime.fromtimestamp(x))
@@ -149,7 +149,7 @@ def normalize_column(dataframe, target_col, group_by_cols, new_col_base):
     }
     new_cols = {}
 
-    for function, denoms in norm_denoms.iteritems():
+    for function, denoms in norm_denoms.items():
         new_col_key = '%s_by_%s' % (new_col_base, function)
         new_cols[new_col_key] = []
         for _, row in dataframe.iterrows():
@@ -164,7 +164,7 @@ def normalize_column(dataframe, target_col, group_by_cols, new_col_base):
             new_cols[new_col_key].append(row[target_col] / denom)
 
     ### Take our normalized data and add them as new columns
-    for new_col, new_col_data in new_cols.iteritems():
+    for new_col, new_col_data in new_cols.items():
         dataframe[new_col] = new_col_data
 
 def apply_filters(dataframe, filter_list, verbose=False):
@@ -173,17 +173,17 @@ def apply_filters(dataframe, filter_list, verbose=False):
     """
     num_rows = len(dataframe)
     if verbose:
-        print "Start with %d rows before filtering" % num_rows
+        print("Start with %d rows before filtering" % num_rows)
     net_filter = [True] * len(dataframe.index)
     for idx, condition in enumerate(filter_list):
         count = len([x for x in net_filter if x])
         net_filter &= condition
         num_drops = (count - len([x for x in net_filter if x]))
         if verbose:
-            print "Dropped %d rows after filter #%d (%d left)" % (num_drops, idx, count - num_drops)
+            print("Dropped %d rows after filter #%d (%d left)" % (num_drops, idx, count - num_drops))
 
     if verbose:
-        print "%d rows remaining" % len(dataframe[net_filter].index)
+        print("%d rows remaining" % len(dataframe[net_filter].index))
 
     return dataframe[net_filter]
 

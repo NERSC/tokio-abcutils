@@ -70,13 +70,13 @@ def autocorrelation(dataset, loci, xmin, xmax, delta, norm_by_locus=False, norm=
         nbins are the number of y values that fell into each bin
     """
     width = xmax - xmin
-    num_bins = long(width / delta)
+    num_bins = int(width / delta)
     xbins = numpy.arange(num_bins, dtype='float64') * delta + xmin
     ybin_vals = [[] for _ in range(num_bins)] # list of lists containing all raw values of each bin
 
     for locus in loci:
         locus_y = dataset.loc[locus]
-        for x, y in dataset.iteritems():
+        for x, y in dataset.items():
             dx = x - locus
             
             if abs(dx) > width:
@@ -85,8 +85,8 @@ def autocorrelation(dataset, loci, xmin, xmax, delta, norm_by_locus=False, norm=
             # how many bins away from zero - we round up when necessary to
             # avoid jobs from the first day finishing a few minutes under
             # 24 hours and thereby falling in the 0th day's bin
-            x_bin = long(round(dx / delta))
-            x_bin -= long(round(xbins[0] / delta))
+            x_bin = int(round(dx / delta))
+            x_bin -= int(round(xbins[0] / delta))
             
             # we drop everything in the 0th bin (e.g., if multiple jobs ran
             # on the same day) because they cause artifacts in autocorrelation

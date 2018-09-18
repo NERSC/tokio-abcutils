@@ -31,16 +31,16 @@ def load_raw_datasets(input_datasets=None, cache_file=CACHE_FILE, verbose=True):
     # Load raw datasets; use cached version if available
     if cache_file and os.path.isfile(cache_file):
         if verbose:
-            print "Loading from cache %s" % cache_file
+            print("Loading from cache %s" % cache_file)
         dataframe = pandas.read_hdf(cache_file, 'summary')
     else:
         dataframes = []
-        for system, csvfile in input_datasets.iteritems():
+        for system, csvfile in input_datasets.items():
             dataframes.append(abcutils.load_and_synthesize_csv(csvfile, system=system))
         dataframe = pandas.concat(dataframes, axis='rows')
         if cache_file:
             if verbose:
-                print "Cached synthesized CSV to %s" % cache_file
+                print("Cached synthesized CSV to %s" % cache_file)
             dataframe.to_hdf(cache_file,
                              key='summary',
                              mode='w',

@@ -48,8 +48,8 @@ def correlation_matrix(dataframe, ax=None, fontsize=20, cmap='seismic', **kwargs
                norm=matplotlib.colors.Normalize(vmin=-1.0, vmax=1.0),
                **kwargs)
 
-    ax.set_xticks(range(len(correlations.columns)))
-    ax.set_yticks(range(len(correlations.columns)))
+    ax.set_xticks(list(range(len(correlations.columns))))
+    ax.set_yticks(list(range(len(correlations.columns))))
     ax.set_xticklabels(correlations.columns, rotation='vertical', fontsize=fontsize)
     ax.set_yticklabels(correlations.columns, fontsize=fontsize)
     return ax, correlations
@@ -123,7 +123,7 @@ def correlation_vector_table(dataframe,
     ### Rewrite the contents of the table that Pandas gave us
     cells_dict = table.get_celld()
     remap_values = {}
-    for cell_pos, cell_obj in cells_dict.iteritems():
+    for cell_pos, cell_obj in cells_dict.items():
         i, j = cell_pos
         value = cell_obj.get_text().get_text()
         height_scale = 1.0
@@ -151,7 +151,7 @@ def correlation_vector_table(dataframe,
         cell_obj.set_edgecolor('black')
 
     ### Actually rewrite the cells now
-    for cell_pos, new_value in remap_values.iteritems():
+    for cell_pos, new_value in remap_values.items():
         text = cells_dict[cell_pos].get_text()
         text.set_text(new_value)
         # this helps when drawing gigantic tables for some reason
@@ -411,7 +411,7 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
     Returns:
         matplotlib.Axes corresponding to drawn plot
     """
-    x_raw = dataframe['_datetime_start'].apply(lambda x: long(time.mktime(x.timetuple()) / 86400) * 86400 )
+    x_raw = dataframe['_datetime_start'].apply(lambda x: int(time.mktime(x.timetuple()) / 86400) * 86400 )
 #   x_raw = dataframe['_datetime_start'].apply(lambda x: time.mktime(x.timetuple()))
     y_raw = dataframe[plot_metric]
 
