@@ -21,6 +21,7 @@ DEFAULT_BOXPLOT_SETTINGS = {
     'whis': [5, 95],
     'showfliers': False,
 }
+_DEFAULT_REGIONCOLORS = ['#0000000A', '#FFFFFF00']
 
 def _init_ax(ax):
     """
@@ -388,9 +389,9 @@ def generate_umami(dataframe, plot_metrics, highlight_index=-1, show_empty=False
     return umami.plot(highlight_index=highlight_index)
 
 def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
-                 sma_intercepts=None, ax=None, 
-                 regioncolors=['#0000000A', '#FFFFFF00'],
-                 plotraw=True,
+                 sma_intercepts=None,
+                 raw_data_interval=0,
+                 ax=None, 
                  **kwargs):
     """Plot the raw data and region boundaries of a time series
     
@@ -400,19 +401,16 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
         short_window: (int): size of the smaller simple moving average window
         long_window: (int): size of the larger simple moving average window
         sma_intercepts (pandas.DataFrame): output of 
-            abcutils.features.sma_intercepts; if none is provided, calculate it
-            using `short_window` and `long_window`
+            abcutils.features.sma_intercepts; if none is provided, don't plot it
+        raw_data_interval (int): plot raw performance data at this interval;
+            if 0, do not plot raw data
         ax (matplotlib.Axes): axes to draw on; create new Axes if None
-        regioncolors (list of str): colors to use when shading alternating
-            regions
-        plotraw (bool): plot raw performance data in addition to SMAs
-        kwargs: arguments to be passed to abcutils.features.sma_intercepts()
+        kwargs: arguments to be passed to abcutils.features.divergence_regions()
         
     Returns:
         matplotlib.Axes corresponding to drawn plot
     """
     x_raw = dataframe['_datetime_start'].apply(lambda x: int(time.mktime(x.timetuple()) / 86400) * 86400 )
-#   x_raw = dataframe['_datetime_start'].apply(lambda x: time.mktime(x.timetuple()))
     y_raw = dataframe[plot_metric]
 
     if ax:
@@ -420,18 +418,57 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
     else:
         fig, ax = matplotlib.pyplot.subplots()
         fig.set_size_inches(16, 4)
-        
-    # plot the raw data
-    delta = 86400 # hardcode sampling rate at 1 day
-    if plotraw:
-        ax.bar(x_raw, y_raw, width=delta, alpha=0.5)
+
     ax.grid()
     ax.set_ylabel(abcutils.CONFIG['metric_labels'].get(plot_metric, plot_metric).replace(" ", "\n"))
     ax.set_xticklabels([datetime.datetime.fromtimestamp(x).strftime("%b %d") for x in ax.get_xticks()])
 
-    ### plot the intercept points demarcating different regions
-    if sma_intercepts is None:
-        sma_intercepts = abcutils.features.sma_intercepts(dataframe, plot_metric, short_window, long_window, **kwargs)
+    # plot the raw data
+    if raw_data_interval:
+        ax.bar(x_raw, y_raw, width=raw_data_interval, alpha=0.5)
+
+    # plot the intercept points demarcating different regions
+    if sma_intercepts is not None:
+        ax = divergence_regions(ax, sma_intercepts, **kwargs)
+
+    # also calculate and plot the SMAs
+    if short_window:
+        sma_short = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, short_window, **kwargs)
+        x_sma_short = [abcutils.core.pd2epoch(x) for x in sma_short.index]
+        y_sma_short = sma_short.values
+        ax.plot(x_sma_short, y_sma_short, color='C1', linewidth=2)
+
+    if long_window:
+        sma_long = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, long_window, **kwargs)
+        x_sma_long = [abcutils.core.pd2epoch(x) for x in sma_long.index]
+        y_sma_long = sma_long.values
+        ax.plot(x_sma_long, y_sma_long, color='C2', linewidth=2)
+
+    return ax
+
+def divergence_regions(ax, sma_intercepts, regioncolors=_DEFAULT_REGIONCOLORS, linestyle=None, **kwargs):
+    """Overlay divergence regions on a plot
+
+    Given a set of SMA intercepts, create shaded blocks demarcating them on an
+    existing figure.
+
+    Args:
+        ax (matplotlib.Axes): axes to draw on; create new Axes if None
+        sma_intercepts (pandas.DataFrame): output of abcutils.features.sma_intercepts
+        regioncolors (list of str): colors to use when shading alternating
+            regions
+        linestyle (str): Line style to demarcate the beginning and end of each
+            divergence region; if None, do not plot.
+        kwargs (dict): Arguments to pass through to ax.plot for boundary lines
+
+    Returns:
+        matplotlib.Axes corresponding to drawn plot
+    """
+    linestyles = {
+        'linewidth': 1.0,
+        'color': 'black',
+    }
+    linestyles.update(kwargs)
     left_x = None
     min_y, max_y = ax.get_ylim()
     for index, row in enumerate(sma_intercepts.itertuples()):
@@ -444,20 +481,19 @@ def sma_overlaps(dataframe, plot_metric, short_window=None, long_window=None,
                          height=(max_y - min_y),
                          color=regioncolors[index % 2],
                          linewidth=0))
+            if linestyle:
+                ax.plot([left_x, left_x],
+                        [min_y, max_y],
+                        linestyle=linestyle,
+                        **linestyles)
+
             left_x = this_x
 
-    ### also calculate and plot the SMAs
-    if short_window:
-        sma_short = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, short_window, **kwargs)
-        x_sma_short = [abcutils.core.pd2epoch(x) for x in sma_short.index]
-        y_sma_short = sma_short.values
-        ax.plot(x_sma_short, y_sma_short, color='C1', linewidth=2)
-
-    if long_window:
-        sma_long = abcutils.features.calculate_sma(dataframe, '_datetime_start', plot_metric, long_window, **kwargs)
-        x_sma_long = [abcutils.core.pd2epoch(x) for x in sma_long.index]
-        y_sma_long = sma_long.values
-        ax.plot(x_sma_long, y_sma_long, color='C2', linewidth=2)
+    if linestyle:
+        ax.plot([this_x, this_x],
+                [min_y, max_y],
+                linestyle=linestyle,
+                **linestyles)
 
     return ax
 
@@ -498,9 +534,8 @@ def draw_region(ax, region, **kwargs):
         kwargs: arguments to pass to `matplotlib.Axes.add_patch()`
     """
     args = {
-        'facecolor': 'black',
+        'facecolor': _DEFAULT_REGIONCOLORS[0],
         'linewidth': 0,
-        'alpha': 0.10,
     }
     args.update(kwargs)
     min_y, max_y = ax.get_ylim()
