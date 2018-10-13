@@ -64,6 +64,19 @@ def load_dataset(verbose=True, *args, **kwargs):
     for index in dataframe[dataframe['coverage_factor_bw'] > 1.2].index:
         dataframe.loc[index, 'coverage_factor_bw'] = numpy.nan
 
+    # Calculate "contention" = max(0, 1 - CF)
+#   dataframe['contention_bw'] = dataframe['coverage_factor_bw'].apply(func=lambda x: max(1.0 - x, 0.0))
+#   dataframe['contention_opens'] = dataframe['coverage_factor_opens'].apply(func=lambda x: max(1.0 - x, 0.0))
+#   dataframe['contention_stats'] = dataframe['coverage_factor_stats'].apply(func=lambda x: max(1.0 - x, 0.0))
+#   dataframe['contention_ops'] = dataframe['coverage_factor_ops'].apply(func=lambda x: max(1.0 - x, 0.0))
+
+    # Calculate "contention" = 1 - CF; don't floor at 0.0 to preserve the
+    # numerical consistency with the published results
+    dataframe['contention_bw'] = 1.0 - dataframe['coverage_factor_bw']
+    dataframe['contention_opens'] = 1.0 - dataframe['coverage_factor_opens']
+    dataframe['contention_stats'] = 1.0 - dataframe['coverage_factor_stats']
+    dataframe['contention_ops'] = 1.0 - dataframe['coverage_factor_ops']
+
     filters = []
 
     # Constrain dates to those covered by the paper
