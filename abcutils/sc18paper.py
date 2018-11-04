@@ -50,10 +50,24 @@ def load_raw_datasets(input_datasets=None, cache_file=CACHE_FILE, verbose=True):
 
     return dataframe
 
-def load_dataset(verbose=True, *args, **kwargs):
-    """
-    Load the canonical dataset used for the "Year in the Life" paper and apply
-    global filters on the dataset.
+def load_dataset(verbose=True, truncate_contention=False, drop_cf_above=1.2, *args, **kwargs):
+    """Load dataset used for Year in the Life paper
+
+    Load the canonical dataset used for the "Year in the Life" paper, apply
+    global filters on the dataset, and add a few additional derived metrics.
+
+    Args:
+        verbose (bool): Print messages describing from where data is being
+            loaded
+        truncate_contention (bool): If True, apply max(0.0, val) to all
+            derived contention values.  Default value corresponds to what
+            was used in the paper.
+        drop_cf_above (float or None): Drop any records whose coverage factors
+            for bandwidth are above this value.  Default value corresponds to
+            what was used in the paper.
+
+    Returns:
+        pandas.DataFrame: Loaded, filtered, and augmented dataset
     """
     dataframe = load_raw_datasets(verbose=verbose, *args, **kwargs)
 
@@ -61,21 +75,17 @@ def load_dataset(verbose=True, *args, **kwargs):
     dataframe.index = pandas.Index(data=numpy.arange(len(dataframe)), dtype='int64')
 
     # Apply a filter to invalidate obviously bogus bandwidth coverage factors
-    for index in dataframe[dataframe['coverage_factor_bw'] > 1.2].index:
-        dataframe.loc[index, 'coverage_factor_bw'] = numpy.nan
+    if drop_cf_above is not None:
+        for index in dataframe[dataframe['coverage_factor_bw'] > drop_cf_above].index:
+            dataframe.loc[index, 'coverage_factor_bw'] = numpy.nan
 
-    # Calculate "contention" = max(0, 1 - CF)
-#   dataframe['contention_bw'] = dataframe['coverage_factor_bw'].apply(func=lambda x: max(1.0 - x, 0.0))
-#   dataframe['contention_opens'] = dataframe['coverage_factor_opens'].apply(func=lambda x: max(1.0 - x, 0.0))
-#   dataframe['contention_stats'] = dataframe['coverage_factor_stats'].apply(func=lambda x: max(1.0 - x, 0.0))
-#   dataframe['contention_ops'] = dataframe['coverage_factor_ops'].apply(func=lambda x: max(1.0 - x, 0.0))
-
-    # Calculate "contention" = 1 - CF; don't floor at 0.0 to preserve the
-    # numerical consistency with the published results
-    dataframe['contention_bw'] = 1.0 - dataframe['coverage_factor_bw']
-    dataframe['contention_opens'] = 1.0 - dataframe['coverage_factor_opens']
-    dataframe['contention_stats'] = 1.0 - dataframe['coverage_factor_stats']
-    dataframe['contention_ops'] = 1.0 - dataframe['coverage_factor_ops']
+    # Calculate "contention" = 1 - CF
+    for metric in ['bw', 'opens', 'stats', 'ops']:
+        if truncate_contention:
+            dataframe['contention_%s' % metric] = dataframe['coverage_factor_%s' % metric].apply(
+                func=lambda x: max(1.0 - x, 0.0))
+        else:
+            dataframe['contention_%s' % metric] = 1.0 - dataframe['coverage_factor_%s' % metric]
 
     filters = []
 
