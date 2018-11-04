@@ -4,6 +4,7 @@ Useful plotting routines for examining TOKIO-ABC data
 import re
 import time
 import datetime
+import warnings
 import pandas
 import numpy
 import matplotlib
@@ -373,9 +374,11 @@ def generate_umami(dataframe, plot_metrics, highlight_index=-1, show_empty=False
             num_nans = 0
 
         if (len(dataframe[metric].unique()) == 1) and (not show_invariant):
+            warnings.warn("Skipping %s (no change in value)" % metric)
             continue
 
         if (len(dataframe[metric]) == num_nans) and (not show_empty):
+            warnings.warn("Skipping %s (all values are NaN)" % metric)
             continue
 
         label = abcutils.CONFIG['metric_labels'].get(metric, metric)
