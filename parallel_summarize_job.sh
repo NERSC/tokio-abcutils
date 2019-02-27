@@ -26,6 +26,7 @@ if [ -z "$NERSC_JOBSDB_HOST" ]; then
 fi
 
 export REPO_HOME="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
+export PYTOKIO_HOME=${PYTOKIO_HOME:-"$REPO_HOME/pytokio"}
 export output_dir=${output_dir:-"$REPO_HOME/summaries/$jobhost"}
 export input_dir=${input_dir:-"$REPO_HOME/results/runs.${jobhost}.*"}
 
@@ -40,12 +41,12 @@ process() {
         # if file doesn't exist, or if it does exist and is not nonzero
         if [ ! -f "$json_output" -o ! -s "$json_output" ]; then
             echo "Generating $json_output"
-            $REPO_HOME/pytokio/bin/summarize_job.py --jobhost=$jobhost \
-                                                    --concurrentjobs \
-                                                    --topology=$REPO_HOME/data/${jobhost}.xtdb2proc.gz \
-                                                    --ost \
-                                                    --json \
-                                                    $darshanlog > $json_output
+            ${PYTOKIO_HOME}/bin/summarize_job.py --jobhost=$jobhost \
+                                                 --concurrentjobs \
+                                                 --topology=$REPO_HOME/data/${jobhost}.xtdb2proc.gz \
+                                                 --ost \
+                                                 --json \
+                                                 $darshanlog > $json_output
 #       else
 #           echo "$json_output already exists with size $(stat --format=%s $json_output); skipping"
         fi
