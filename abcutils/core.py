@@ -12,7 +12,7 @@ import numpy
 import scipy.stats
 import abcutils
 
-def load_and_synthesize_csv(csv_file, system="edison"):
+def load_and_synthesize_csv(csv_file, system="edison", dropna_how="any"):
     """
     Load a CSV file and synthesize new metrics that may be useful for subsequent
     analysis.
@@ -23,7 +23,10 @@ def load_and_synthesize_csv(csv_file, system="edison"):
         filep = gzip.open(csv_file, 'r')
     else:
         filep = open(csv_file, 'r')
-    dataframe = pandas.read_csv(csv_file).dropna()
+    dataframe = pandas.read_csv(csv_file).dropna(how=dropna_how)
+
+    # drop NA performance; we can't normalize them
+    dataframe = dataframe[~dataframe['darshan_agg_perf_by_slowest_posix'].isna()]
     filep.close()
 
     dataframe['_system'] = system
