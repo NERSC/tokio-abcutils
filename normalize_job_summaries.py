@@ -32,6 +32,7 @@ def _normalize_job_summaries():
             ### if a json file can't be parsed, report which file it is
             try:
                 input_data = json.load(input_file)
+                # sys.stderr.write("Consumed json file %s\n" % input_filename)
             except ValueError:
                 if os.path.getsize(input_filename) > 0:
                     sys.stderr.write("Malformed json file %s; skipping\n" % input_filename)
@@ -52,7 +53,7 @@ def _normalize_job_summaries():
     result = save_output(summaries_df, output_file)
 
     if result is not None:
-        print "Saved output to %s" % result
+        print("Saved output to %s" % result)
 
 def save_output(dataframe, output_filename):
     """
@@ -93,7 +94,7 @@ def normalize_job_summaries(job_summaries):
     for job_summary in job_summaries:
         ### add each key to a dict of lists which will become our dataframe
         cols_found = set([])
-        for key, value in job_summary.iteritems():
+        for key, value in job_summary.items():
             cols_found.add(key)
             if key in norm_summaries:
                 norm_summaries[key].append(value)
@@ -121,7 +122,7 @@ def normalize_job_summaries(job_summaries):
 
     ### verify that all columns have the same number of rows
     expected_len, expected_key = -1, "_unknown"
-    for key, array in norm_summaries.iteritems():
+    for key, array in norm_summaries.items():
         if expected_len < 0:
             expected_len = len(array)
             expected_key = key
