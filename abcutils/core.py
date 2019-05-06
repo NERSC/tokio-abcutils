@@ -99,6 +99,14 @@ def load_and_synthesize_csv(csv_file, system="edison", dropna_how="any"):
     dataframe['coverage_factor_bw'] = ((dataframe['darshan_tot_bytes_read_posix'] + dataframe['darshan_tot_bytes_written_posix']) / dataframe['fs_tot_bytes']).replace([numpy.inf, -numpy.inf], numpy.nan)
     dataframe['coverage_factor_ops'] = ((dataframe.get('darshan_tot_reads_posix', nans) + dataframe.get('darshan_tot_writes_posix', nans)) / dataframe.get('fs_tot_ops', nans)).replace([numpy.inf, -numpy.inf], numpy.nan)
 
+    # Calculate "contention" = 1 - CF
+    for metric in ['bw', 'opens', 'stats', 'ops']:
+        if truncate_contention:
+            dataframe['contention_%s' % metric] = dataframe['coverage_factor_%s' % metric].apply(
+                func=lambda x: max(1.0 - x, 0.0))
+        else:
+            dataframe['contention_%s' % metric] = 1.0 - dataframe['coverage_factor_%s' % metric]
+
     # Calculate the relevant metrics for counters that have both a read and
     # writen component; mostly for convenience.
     for key in ('darshan_fpp_%s_job?',

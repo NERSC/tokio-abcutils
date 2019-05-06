@@ -79,14 +79,33 @@ def load_dataset(verbose=True, truncate_contention=False, drop_cf_above=1.2, *ar
         for index in dataframe[dataframe['coverage_factor_bw'] > drop_cf_above].index:
             dataframe.loc[index, 'coverage_factor_bw'] = numpy.nan
 
-    # Calculate "contention" = 1 - CF
-    for metric in ['bw', 'opens', 'stats', 'ops']:
-        if truncate_contention:
-            dataframe['contention_%s' % metric] = dataframe['coverage_factor_%s' % metric].apply(
-                func=lambda x: max(1.0 - x, 0.0))
-        else:
-            dataframe['contention_%s' % metric] = 1.0 - dataframe['coverage_factor_%s' % metric]
 
+    # Drop some of the weird columns left over from the CSV
+    dataframe = dataframe.drop(
+        columns=[x for x in ['Unnamed: 0', 'index'] if x in dataframe.columns],
+        axis=1)
+
+    filters = build_sc18_filters(dataframe)
+    filtered_df = abcutils.core.apply_filters(dataframe, filters, verbose).sort_values('_datetime_start').copy()
+
+    # Reset the index to ensure that there are no degenerate indices in the final dataframe
+    filtered_df.index = pandas.Index(data=numpy.arange(len(filtered_df)), dtype='int64')
+
+    del dataframe
+
+    return filtered_df
+
+
+def build_sc18_filters(dataframe):
+    """Build generic data filters for the SC paper
+
+    Returns:
+        dataframe (pandas.DataFrame): Raw dataset from load_and_synthesize_csv
+
+    Returns:
+        list: List of filters to be passed to ``abcutils.core.apply_filters``
+        along with ``dataframe``
+    """
     filters = []
 
     # Constrain dates to those covered by the paper
@@ -102,20 +121,7 @@ def load_dataset(verbose=True, truncate_contention=False, drop_cf_above=1.2, *ar
     # Some of the Mira data has invalid benchmark_ids; drop them
     filters.append(dataframe['_benchmark_id'] != 'hacc_io_write_shared_write')
 
-
     # The Haswell data is misleading since it used a tiny fraction of the system
     filters.append(dataframe['_test_platform'] != 'cscratch@cori-haswell')
 
-    # Drop some of the weird columns left over from the CSV
-    dataframe = dataframe.drop(
-        columns=[x for x in ['Unnamed: 0', 'index'] if x in dataframe.columns],
-        axis=1)
-
-    filtered_df = abcutils.core.apply_filters(dataframe, filters, verbose).sort_values('_datetime_start').copy()
-
-    # Reset the index to ensure that there are no degenerate indices in the final dataframe
-    filtered_df.index = pandas.Index(data=numpy.arange(len(filtered_df)), dtype='int64')
-
-    del dataframe
-
-    return filtered_df
+    return filters
