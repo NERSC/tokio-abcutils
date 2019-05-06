@@ -13,14 +13,12 @@ INPUT_DATASETS = {
 }
 CACHE_FILE = 'cache.hdf5'
 
-def load_raw_datasets(input_datasets=None, cache_file=CACHE_FILE, verbose=True):
+def load_raw_datasets(input_datasets=None, verbose=True):
     """Load data from CSVs and synthesize metrics
 
     Args:
         input_datasets (dict): keyed by system name (mira, edison, cori); values
             are path to the CSV containing the data for that system.
-        cache_file (str): path to a cache file to load.  If does not exist,
-            create it after the CSVs are loaded
         verbose (bool): announce what is happening before it happens
     Returns:
         Concatenated pandas.DataFrame with data from all CSVs
@@ -28,25 +26,31 @@ def load_raw_datasets(input_datasets=None, cache_file=CACHE_FILE, verbose=True):
     if input_datasets is None:
         input_datasets = INPUT_DATASETS
 
-    # Load raw datasets; use cached version if available
-    if cache_file and os.path.isfile(cache_file):
-        if verbose:
-            print("Loading from cache %s" % cache_file)
-        dataframe = pandas.read_hdf(cache_file, 'summary')
-    else:
-        dataframes = []
-        for system, csvfile in input_datasets.items():
-            dataframes.append(abcutils.load_and_synthesize_csv(csvfile, system=system))
-        dataframe = pandas.concat(dataframes, axis='rows')
-        if cache_file:
+    dataframes = []
+    for system, csvfile in input_datasets.items():
+        if csvfile.endswith('.csv'):
+            cache_file = csvfile[:-4] + "_cache.hdf5"
+        elif csvfile.endswith('.csv.gz'):
+            cache_file = csvfile[:-7] + "_cache.hdf5"
+        else:
+            cache_file = csvfile + "_cache.hdf5"
+
+        if os.path.isfile(cache_file):
             if verbose:
-                print("Cached synthesized CSV to %s" % cache_file)
+                print("Loading from cache %s" % cache_file)
+            dataframe = pandas.read_hdf(cache_file, 'summary')
+        else:
+            dataframe = abcutils.load_and_synthesize_csv(csvfile, system=system)
             dataframe.to_hdf(cache_file,
                              key='summary',
                              mode='w',
                              format='fixed',
                              complevel=9,
                              complib='zlib')
+            if verbose:
+                print("Cached synthesized CSV to %s" % cache_file)
+        dataframes.append(dataframe)
+    dataframe = pandas.concat(dataframes, axis='rows')
 
     return dataframe
 
@@ -116,6 +120,12 @@ def load_dataset(verbose=True, truncate_contention=False, drop_cf_above=1.2, fil
     dataframe = dataframe.drop(
         columns=[x for x in ['Unnamed: 0', 'index'] if x in dataframe.columns],
         axis=1)
+
+    # if truncate_contention, do not allow contention to go below 0.0
+    if truncate_contention:
+        for metric in ['bw', 'opens', 'stats', 'ops']:
+            dataframe['contention_%s' % metric] = dataframe['contention_%s' % metric].apply(
+                func=lambda x: max(1.0 - x, 0.0))
 
     if filter_func:
         filtered_df = abcutils.core.apply_filters(dataframe, filter_func(dataframe), verbose).sort_values('_datetime_start').copy()

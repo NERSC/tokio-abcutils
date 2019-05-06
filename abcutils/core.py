@@ -101,11 +101,7 @@ def load_and_synthesize_csv(csv_file, system="edison", dropna_how="any"):
 
     # Calculate "contention" = 1 - CF
     for metric in ['bw', 'opens', 'stats', 'ops']:
-        if truncate_contention:
-            dataframe['contention_%s' % metric] = dataframe['coverage_factor_%s' % metric].apply(
-                func=lambda x: max(1.0 - x, 0.0))
-        else:
-            dataframe['contention_%s' % metric] = 1.0 - dataframe['coverage_factor_%s' % metric]
+        dataframe['contention_%s' % metric] = 1.0 - dataframe['coverage_factor_%s' % metric]
 
     # Calculate the relevant metrics for counters that have both a read and
     # writen component; mostly for convenience.
