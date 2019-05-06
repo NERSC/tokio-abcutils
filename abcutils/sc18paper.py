@@ -57,7 +57,7 @@ def load_raw_datasets(input_datasets=None, verbose=True):
 def build_sc18_filters(dataframe):
     """Build generic data filters for the SC paper
 
-    Returns:
+    Args:
         dataframe (pandas.DataFrame): Raw dataset from load_and_synthesize_csv
 
     Returns:
@@ -84,6 +84,47 @@ def build_sc18_filters(dataframe):
 
     return filters
 
+def clean_sc18_dataframe(dataframe, truncate_contention=False, drop_cf_above=1.2, inplace=True):
+    """Patches holes and problems in dataset
+
+    Args:
+        dataframe (pandas.DataFrame): Raw dataset from load_and_synthesize_csv
+        truncate_contention (bool): If True, apply max(0.0, val) to all
+            derived contention values.  Default value corresponds to what
+            was used in the paper.
+        drop_cf_above (float or None): Drop any records whose coverage factors
+            for bandwidth are above this value.  Default value corresponds to
+            what was used in the paper.
+        inplace (bool): Modify dataframe in-place or return a modified copy
+
+    Returns:
+        pandas.DataFrame: DataFrame with gaps and invalid data (negatives, NaNs)
+        filled in with valid data (zeros, NaNs, etc)
+    """
+    if not inplace:
+        dataframe = dataframe.copy()
+
+    # Reset the index to ensure that there are no degenerate indices in the final dataframe
+    dataframe.index = pandas.Index(data=numpy.arange(len(dataframe)), dtype='int64')
+
+    # Apply a filter to invalidate obviously bogus bandwidth coverage factors
+    if drop_cf_above is not None:
+        for index in dataframe[dataframe['coverage_factor_bw'] > drop_cf_above].index:
+            dataframe.loc[index, 'coverage_factor_bw'] = numpy.nan
+
+    # Drop some of the weird columns left over from the CSV
+    dataframe = dataframe.drop(
+        columns=[x for x in ['Unnamed: 0', 'index'] if x in dataframe.columns],
+        axis=1)
+
+    # if truncate_contention, do not allow contention to go below 0.0
+    if truncate_contention:
+        for metric in ['bw', 'opens', 'stats', 'ops']:
+            dataframe['contention_%s' % metric] = dataframe['contention_%s' % metric].apply(
+                func=lambda x: max(1.0 - x, 0.0))
+
+    return dataframe
+
 def load_dataset(verbose=True, truncate_contention=False, drop_cf_above=1.2, filter_func=build_sc18_filters, *args, **kwargs):
     """Load dataset used for Year in the Life paper
 
@@ -107,25 +148,10 @@ def load_dataset(verbose=True, truncate_contention=False, drop_cf_above=1.2, fil
         pandas.DataFrame: Loaded, filtered, and augmented dataset
     """
     dataframe = load_raw_datasets(verbose=verbose, *args, **kwargs)
-
-    # Reset the index to ensure that there are no degenerate indices in the final dataframe
-    dataframe.index = pandas.Index(data=numpy.arange(len(dataframe)), dtype='int64')
-
-    # Apply a filter to invalidate obviously bogus bandwidth coverage factors
-    if drop_cf_above is not None:
-        for index in dataframe[dataframe['coverage_factor_bw'] > drop_cf_above].index:
-            dataframe.loc[index, 'coverage_factor_bw'] = numpy.nan
-
-    # Drop some of the weird columns left over from the CSV
-    dataframe = dataframe.drop(
-        columns=[x for x in ['Unnamed: 0', 'index'] if x in dataframe.columns],
-        axis=1)
-
-    # if truncate_contention, do not allow contention to go below 0.0
-    if truncate_contention:
-        for metric in ['bw', 'opens', 'stats', 'ops']:
-            dataframe['contention_%s' % metric] = dataframe['contention_%s' % metric].apply(
-                func=lambda x: max(1.0 - x, 0.0))
+    dataframe = clean_sc18_dataframe(
+        dataframe=dataframe,
+        truncate_contention=truncate_contention,
+        drop_cf_above=drop_cf_above)
 
     if filter_func:
         filtered_df = abcutils.core.apply_filters(dataframe, filter_func(dataframe), verbose).sort_values('_datetime_start').copy()
